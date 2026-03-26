@@ -48,6 +48,16 @@ SOURCES = [
     ("listings_project", "https://www.listingsproject.com",                                    False),
     ("craigslist",       "https://newyork.craigslist.org/search/off",                          True),
     ("streeteasy",       "https://streeteasy.com/for-rent/nyc/",                               True),
+    # Group A — API-based sources
+    ("nyc_opendata",     "https://data.cityofnewyork.us/resource/u35m-9t32.json?$limit=1",    False),
+    ("coworker",         "https://www.coworker.com/",                                          False),
+    # Group B — New Firecrawl scrapers
+    ("ny_studio_factory","https://www.nystudiofactory.com/",                                   False),
+    ("navy_yard",        "https://www.brooklynnavyyard.org/",                                  False),
+    ("gmdc",             "https://gmdconline.org/",                                            False),
+    ("mana_contemporary","https://www.manacontemporary.com/studios/",                           False),
+    ("pioneer_works",    "https://pioneerworks.org/",                                          False),
+    ("industry_city",    "https://industrycity.com/",                                          False),
 ]
 
 SOURCE_NAMES     = [s[0] for s in SOURCES]
@@ -82,6 +92,14 @@ def _scraper_class(name: str):
         "listings_project": "ListingsProjectScraper",
         "craigslist":       "CraigslistScraper",
         "streeteasy":       "StreeteasyScraper",
+        "nyc_opendata":     "NycOpendataScraper",
+        "coworker":         "CoworkerScraper",
+        "ny_studio_factory":"NyStudioFactoryScraper",
+        "navy_yard":        "NavyYardScraper",
+        "gmdc":             "GmdcScraper",
+        "mana_contemporary":"ManaContemporaryScraper",
+        "pioneer_works":    "PioneerWorksScraper",
+        "industry_city":    "IndustryCityScraper",
     }[name]
     return getattr(mod, class_name)
 

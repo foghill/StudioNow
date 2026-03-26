@@ -26,6 +26,16 @@ SOURCES: list[SourceConfig] = [
     SourceConfig(name="listings_project", priority="medium"),
     SourceConfig(name="craigslist", restricted=True, priority="medium"),
     SourceConfig(name="streeteasy", restricted=True, priority="low"),
+    # Group A — API-based (no Firecrawl credits)
+    SourceConfig(name="nyc_opendata", priority="high"),
+    SourceConfig(name="coworker", priority="high"),
+    # Group B — New Firecrawl scrapers (artist-specific sites)
+    SourceConfig(name="ny_studio_factory", priority="medium"),
+    SourceConfig(name="navy_yard", priority="medium"),
+    SourceConfig(name="gmdc", priority="medium"),
+    SourceConfig(name="mana_contemporary", priority="medium"),
+    SourceConfig(name="pioneer_works", priority="medium"),
+    SourceConfig(name="industry_city", priority="medium"),
 ]
 
 

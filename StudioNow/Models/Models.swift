@@ -30,6 +30,28 @@ struct StudioListing: Codable, Identifiable {
     var coTenantCompatibilityScore: Double?
     var latitude: Double
     var longitude: Double
+    var source: String = ""
+    var sourceURL: String = ""
+
+    /// Human-readable source label for display
+    var sourceLabel: String {
+        switch source {
+        case "rockella": return "Rockella Space"
+        case "chashama": return "ChaShaMa"
+        case "nyc_opendata": return "NYC Open Data"
+        case "spacefinder": return "Spacefinder NYC"
+        case "loopnet": return "LoopNet"
+        case "nyfa": return "NYFA"
+        case "listings_project": return "Listings Project"
+        case "coworker": return "Coworker"
+        case "gmdc": return "GMDC"
+        case "navy_yard": return "Brooklyn Navy Yard"
+        case "mana_contemporary": return "Mana Contemporary"
+        case "pioneer_works": return "Pioneer Works"
+        case "industry_city": return "Industry City"
+        default: return source.isEmpty ? "" : source.capitalized
+        }
+    }
 }
 
 enum ApplicationStatus: String, Codable, CaseIterable {
@@ -90,6 +112,8 @@ struct RemoteLeaseTerms: Decodable {
 
 struct RemoteListing: Decodable {
     let id: String?
+    let source: String?
+    let sourceUrl: String?
     let title: String
     let address: String?
     let neighborhood: String?
@@ -105,7 +129,8 @@ struct RemoteListing: Decodable {
     let useType: String?
 
     enum CodingKeys: String, CodingKey {
-        case id, title, address, neighborhood, borough, latitude, longitude
+        case id, source, title, address, neighborhood, borough, latitude, longitude
+        case sourceUrl = "source_url"
         case sizeSqft = "size_sqft"
         case priceMonthly = "price_monthly"
         case photos, amenities, description
@@ -146,7 +171,9 @@ struct RemoteListing: Decodable {
             availableDate: availableDate,
             coTenantCompatibilityScore: nil,
             latitude: lat,
-            longitude: lon
+            longitude: lon,
+            source: source ?? "",
+            sourceURL: sourceUrl ?? ""
         )
     }
 

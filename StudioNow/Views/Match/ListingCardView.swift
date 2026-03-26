@@ -49,16 +49,28 @@ struct ListingCardView: View {
                 }
 
                 HStack(spacing: 16) {
-                    Label("\(listing.sqft) sq ft", systemImage: "square.dashed")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                    if listing.sqft > 0 {
+                        Label("\(listing.sqft) sq ft", systemImage: "square.dashed")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Label("Size TBD", systemImage: "square.dashed")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary.opacity(0.5))
+                    }
 
                     Spacer()
 
-                    Text("$\(listing.monthlyRent)/mo")
-                        .font(.title3)
-                        .fontWeight(.bold)
-                        .foregroundStyle(accent)
+                    if listing.monthlyRent > 0 {
+                        Text("$\(listing.monthlyRent)/mo")
+                            .font(.title3)
+                            .fontWeight(.bold)
+                            .foregroundStyle(accent)
+                    } else {
+                        Text("Contact for pricing")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
                 }
 
                 HStack(spacing: 8) {
@@ -76,6 +88,17 @@ struct ListingCardView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
+                }
+
+                // Source attribution
+                if !listing.sourceLabel.isEmpty {
+                    HStack(spacing: 4) {
+                        Image(systemName: "link")
+                            .font(.system(size: 9))
+                        Text("via \(listing.sourceLabel)")
+                            .font(.caption2)
+                    }
+                    .foregroundStyle(accent.opacity(0.35))
                 }
             }
             .padding(14)
@@ -114,7 +137,7 @@ struct ListingCardView: View {
 }
 
 #Preview {
-    ListingCardView(listing: MockData.listings[0])
+    ListingCardView(listing: MockData.previewListing)
         .padding()
         .background(Color(red: 0.97, green: 0.96, blue: 0.94))
 }

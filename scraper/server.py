@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import importlib
-import json
 import logging
 import os
 import threading
@@ -15,19 +14,34 @@ from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 
 from .config import Config, SOURCES
-from .normalize import normalize_listings, save_raw, save_results
+from .db import (
+    finish_scrape_run,
+    get_connection,
+    get_listing_by_id,
+    get_stats,
+    init_db,
+    mark_stale,
+    query_listings,
+    query_nearby,
+    start_scrape_run,
+    upsert_listings,
+)
+from .normalize import normalize_listings, save_raw
 
 logger = logging.getLogger(__name__)
 
 # ── Scheduler config ──────────────────────────────────────────────────────────
 
-# Set SCRAPE_INTERVAL_HOURS to control how often the server auto-scrapes.
-# Set to 0 to disable automatic scraping (manual-only mode).
-SCRAPE_INTERVAL_HOURS: float = float(os.getenv("SCRAPE_INTERVAL_HOURS", "24"))
+# Schedule: cron-based (6 AM and 6 PM ET) or interval-based fallback.
+# Set SCRAPE_CRON=1 (default) to use 6am/6pm ET schedule.
+# Set SCRAPE_INTERVAL_HOURS to a number > 0 to use fixed interval instead.
+# Set both to 0 / empty to disable auto-scraping.
+SCRAPE_CRON: bool = os.getenv("SCRAPE_CRON", "1") == "1"
+SCRAPE_INTERVAL_HOURS: float = float(os.getenv("SCRAPE_INTERVAL_HOURS", "0"))
 
-# ── In-memory cache ──────────────────────────────────────────────────────────
+# ── Shared state ──────────────────────────────────────────────────────────────
 
-_cache: dict = {"listings": [], "generated_at": None, "total": 0}
+_db_conn = None  # Set during lifespan startup
 
 _scrape_status: dict = {
     "running": False,
@@ -38,40 +52,17 @@ _scrape_status: dict = {
 }
 
 _scrape_lock = threading.Lock()
-
-# APScheduler instance — set during lifespan startup
 _scheduler = None
 
 
-def _listings_path() -> str:
-    config = Config()
-    return os.path.join(config.data_dir, "normalized", "listings.json")
-
-
-def _load_cache() -> None:
-    """Load (or reload) the in-memory listing cache from listings.json."""
-    path = _listings_path()
-    if not os.path.exists(path):
-        logger.warning("listings.json not found — cache empty. Run POST /scrape to populate.")
-        return
-    with open(path) as f:
-        data = json.load(f)
-    _cache["listings"] = data.get("listings", [])
-    _cache["generated_at"] = data.get("generated_at")
-    _cache["total"] = len(_cache["listings"])
-    logger.info("Cache loaded: %d listings (generated %s)", _cache["total"], _cache["generated_at"])
-
-
-def _cache_age_hours() -> float | None:
-    """Return how many hours ago the cache was generated, or None if unknown."""
-    generated_at = _cache.get("generated_at")
-    if not generated_at:
-        return None
-    try:
-        ts = datetime.fromisoformat(generated_at.replace("Z", "+00:00"))
-        return (datetime.now(timezone.utc) - ts).total_seconds() / 3600
-    except (ValueError, TypeError):
-        return None
+def _get_db():
+    """Get the shared database connection."""
+    global _db_conn
+    if _db_conn is None:
+        config = Config()
+        _db_conn = get_connection(config=config)
+        init_db(_db_conn)
+    return _db_conn
 
 
 # ── Background scrape ────────────────────────────────────────────────────────
@@ -86,6 +77,14 @@ def _import_scraper(name: str):
         "listings_project":"scraper.sources.listings_project:ListingsProjectScraper",
         "craigslist":      "scraper.sources.craigslist:CraigslistScraper",
         "streeteasy":      "scraper.sources.streeteasy:StreeteasyScraper",
+        "nyc_opendata":    "scraper.sources.nyc_opendata:NycOpendataScraper",
+        "coworker":        "scraper.sources.coworker:CoworkerScraper",
+        "ny_studio_factory":"scraper.sources.ny_studio_factory:NyStudioFactoryScraper",
+        "navy_yard":       "scraper.sources.navy_yard:NavyYardScraper",
+        "gmdc":            "scraper.sources.gmdc:GmdcScraper",
+        "mana_contemporary":"scraper.sources.mana_contemporary:ManaContemporaryScraper",
+        "pioneer_works":   "scraper.sources.pioneer_works:PioneerWorksScraper",
+        "industry_city":   "scraper.sources.industry_city:IndustryCityScraper",
     }
     path = registry.get(name)
     if not path:
@@ -96,13 +95,21 @@ def _import_scraper(name: str):
 
 
 def _run_scrape(source: str | None, priority: str | None, include_restricted: bool) -> None:
-    """Executed in a daemon thread — scrapes, normalizes, and refreshes the cache."""
+    """Executed in a daemon thread — scrapes, normalizes, and writes to SQLite."""
     with _scrape_lock:
         if _scrape_status["running"]:
             return
         _scrape_status["running"] = True
         _scrape_status["error"] = None
         _scrape_status["last_source"] = source or priority or "high-priority"
+
+    conn = _get_db()
+    total_inserted = 0
+    total_updated = 0
+    total_staled = 0
+    total_credits = 0
+    all_errors: list[str] = []
+    run_id = None
 
     try:
         from .client import CreditExhaustedError, FirecrawlClient
@@ -118,125 +125,75 @@ def _run_scrape(source: str | None, priority: str | None, include_restricted: bo
         else:
             names = [s.name for s in config.get_sources(priority="high")]
 
-        all_listings = []
+        run_id = start_scrape_run(conn, names)
+
         for name in names:
             try:
                 cls = _import_scraper(name)
                 scraper = cls(client=client, config=config)
                 result = scraper.run()
                 save_raw(name, [l.model_dump(mode="json") for l in result.listings], config)
-                all_listings.extend(result.listings)
-                logger.info("%s: %d listings, %d credits", name, len(result.listings), result.credits_used)
+
+                # Normalize
+                normalized, _ = normalize_listings(result.listings)
+
+                # Upsert into SQLite
+                counts = upsert_listings(conn, normalized)
+                total_inserted += counts["inserted"]
+                total_updated += counts["updated"]
+
+                # Mark stale listings from this source
+                seen_ids = {l.id for l in normalized if l.id}
+                staled = mark_stale(conn, name, seen_ids)
+                total_staled += staled
+
+                total_credits += result.credits_used
+                all_errors.extend(result.errors)
+
+                logger.info(
+                    "%s: %d listings (%d new, %d updated, %d staled), %d credits",
+                    name, len(normalized), counts["inserted"], counts["updated"],
+                    staled, result.credits_used,
+                )
             except CreditExhaustedError as e:
                 logger.warning("Credit limit hit, stopping: %s", e)
+                all_errors.append(f"Credit exhausted: {e}")
                 break
             except Exception as e:
                 logger.error("%s failed: %s", name, e)
-
-        normalized, rejected = normalize_listings(all_listings)
-        save_results(normalized, rejected, config)
-        _load_cache()
+                all_errors.append(f"{name}: {e}")
 
         _scrape_status["last_run"] = datetime.now(timezone.utc).isoformat()
-        _scrape_status["listings_added"] = len(normalized)
-        logger.info("Scrape complete: %d listings saved", len(normalized))
+        _scrape_status["listings_added"] = total_inserted + total_updated
+        logger.info(
+            "Scrape complete: %d inserted, %d updated, %d staled",
+            total_inserted, total_updated, total_staled,
+        )
+
+        if run_id:
+            finish_scrape_run(
+                conn, run_id,
+                listings_added=total_inserted,
+                listings_updated=total_updated,
+                listings_staled=total_staled,
+                credits_used=total_credits,
+                errors=all_errors,
+                status="completed",
+            )
 
     except Exception as e:
         _scrape_status["error"] = str(e)
         logger.exception("Scrape failed")
+        if run_id:
+            finish_scrape_run(conn, run_id, errors=[str(e)], status="failed")
     finally:
         _scrape_status["running"] = False
 
 
 def _trigger_scheduled_scrape() -> None:
-    """Called by APScheduler — runs high-priority sources in a daemon thread."""
     logger.info("Scheduled scrape triggered")
-    thread = threading.Thread(
-        target=_run_scrape,
-        args=(None, None, False),
-        daemon=True,
-    )
+    thread = threading.Thread(target=_run_scrape, args=(None, None, False), daemon=True)
     thread.start()
-
-
-def _first_run_delay() -> datetime | None:
-    """
-    Return when the first scheduled scrape should fire.
-    If the cache is fresh (age < interval), delay the first run so we don't
-    scrape immediately on every server restart.
-    Returns None to fire immediately.
-    """
-    if SCRAPE_INTERVAL_HOURS <= 0:
-        return None
-    age = _cache_age_hours()
-    if age is None:
-        # No cache at all — scrape soon (1 minute delay to let server finish starting)
-        return datetime.now(timezone.utc) + timedelta(minutes=1)
-    remaining = SCRAPE_INTERVAL_HOURS - age
-    if remaining <= 0:
-        # Cache is stale — scrape soon
-        return datetime.now(timezone.utc) + timedelta(minutes=1)
-    # Cache is fresh — delay first run until the interval has elapsed
-    return datetime.now(timezone.utc) + timedelta(hours=remaining)
-
-
-# ── Filtering ─────────────────────────────────────────────────────────────────
-
-def _apply_filters(
-    listings: list[dict],
-    q: str | None,
-    neighborhood: str | None,
-    borough: str | None,
-    min_price: float | None,
-    max_price: float | None,
-    min_sqft: int | None,
-    max_sqft: int | None,
-    source: str | None,
-    shared_ok: bool | None,
-) -> list[dict]:
-    results = listings
-
-    if q:
-        ql = q.lower()
-        results = [
-            l for l in results
-            if ql in (l.get("title") or "").lower()
-            or ql in (l.get("address") or "").lower()
-            or ql in (l.get("neighborhood") or "").lower()
-            or ql in (l.get("description") or "").lower()
-        ]
-
-    if neighborhood:
-        nl = neighborhood.lower()
-        results = [l for l in results if nl in (l.get("neighborhood") or "").lower()]
-
-    if borough:
-        bl = borough.lower()
-        results = [l for l in results if (l.get("borough") or "").lower() == bl]
-
-    if min_price is not None:
-        results = [l for l in results if (l.get("price_monthly") or 0) >= min_price]
-
-    if max_price is not None:
-        results = [l for l in results if l.get("price_monthly") is not None and l["price_monthly"] <= max_price]
-
-    if min_sqft is not None:
-        results = [l for l in results if (l.get("size_sqft") or 0) >= min_sqft]
-
-    if max_sqft is not None:
-        results = [l for l in results if l.get("size_sqft") is not None and l["size_sqft"] <= max_sqft]
-
-    if source:
-        results = [l for l in results if l.get("source") == source]
-
-    if shared_ok is not None:
-        results = [
-            l for l in results
-            if l.get("lease_terms") is not None
-            and l["lease_terms"].get("shared_ok") == shared_ok
-        ]
-
-    return results
 
 
 # ── Request / response schemas ────────────────────────────────────────────────
@@ -245,13 +202,12 @@ class ListingsResponse(BaseModel):
     total: int
     offset: int
     limit: int
-    cached_at: str | None
     listings: list[dict]
 
 
 class ScrapeRequest(BaseModel):
-    source: str | None = None        # e.g. "rockella"
-    priority: str | None = None      # "high" | "medium" | "low"
+    source: str | None = None
+    priority: str | None = None
     include_restricted: bool = False
 
 
@@ -267,47 +223,78 @@ class ScrapeStatusResponse(BaseModel):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global _scheduler
-    _load_cache()
+    global _scheduler, _db_conn
 
-    if SCRAPE_INTERVAL_HOURS > 0:
+    # Initialize database
+    config = Config()
+    _db_conn = get_connection(config=config)
+    init_db(_db_conn)
+
+    stats = get_stats(_db_conn)
+    logger.info("Database ready: %d active listings", stats["active_listings"])
+
+    # If DB is empty, try importing from existing listings.json
+    if stats["total_listings"] == 0:
+        json_path = os.path.join(config.data_dir, "normalized", "listings.json")
+        if os.path.exists(json_path):
+            from .db import import_from_json
+            counts = import_from_json(_db_conn, json_path)
+            logger.info("Imported from listings.json: %s", counts)
+
+    # Start scheduler
+    if SCRAPE_CRON or SCRAPE_INTERVAL_HOURS > 0:
         try:
             from apscheduler.schedulers.background import BackgroundScheduler
+            from apscheduler.triggers.cron import CronTrigger
 
             _scheduler = BackgroundScheduler()
-            first_run = _first_run_delay()
-            _scheduler.add_job(
-                _trigger_scheduled_scrape,
-                "interval",
-                hours=SCRAPE_INTERVAL_HOURS,
-                next_run_time=first_run,
-                id="scheduled_scrape",
-            )
-            _scheduler.start()
-            logger.info(
-                "Scheduler started — interval: %gh, first run: %s",
-                SCRAPE_INTERVAL_HOURS,
-                first_run.isoformat() if first_run else "now",
-            )
+
+            if SCRAPE_CRON:
+                # 6:00 AM ET and 6:00 PM ET, every day
+                _scheduler.add_job(
+                    _trigger_scheduled_scrape,
+                    CronTrigger(hour=6, minute=0, timezone="US/Eastern"),
+                    id="scrape_6am",
+                )
+                _scheduler.add_job(
+                    _trigger_scheduled_scrape,
+                    CronTrigger(hour=18, minute=0, timezone="US/Eastern"),
+                    id="scrape_6pm",
+                )
+                _scheduler.start()
+                logger.info("Scheduler started — cron: 6:00 AM and 6:00 PM ET daily")
+            else:
+                _scheduler.add_job(
+                    _trigger_scheduled_scrape,
+                    "interval",
+                    hours=SCRAPE_INTERVAL_HOURS,
+                    next_run_time=datetime.now(timezone.utc) + timedelta(minutes=1),
+                    id="scheduled_scrape",
+                )
+                _scheduler.start()
+                logger.info("Scheduler started — interval: %gh", SCRAPE_INTERVAL_HOURS)
         except ImportError:
-            logger.warning("apscheduler not installed — auto-scraping disabled. Run: pip install apscheduler")
+            logger.warning("apscheduler not installed — auto-scraping disabled.")
     else:
-        logger.info("Auto-scraping disabled (SCRAPE_INTERVAL_HOURS=0)")
+        logger.info("Auto-scraping disabled (SCRAPE_CRON=0, SCRAPE_INTERVAL_HOURS=0)")
 
     yield
 
     if _scheduler is not None:
         _scheduler.shutdown(wait=False)
-        logger.info("Scheduler stopped")
+    if _db_conn is not None:
+        _db_conn.close()
+    logger.info("Shutdown complete")
 
 
 app = FastAPI(
     title="Studio Now API",
     description=(
-        "Local listings API for the Studio Now iOS app. "
-        "Scrapes NYC artist studio spaces via Firecrawl and caches them for fast querying."
+        "Listings API for the Studio Now iOS app. "
+        "Queries a SQLite database of NYC artist studio spaces "
+        "collected from 16 sources via Firecrawl and public APIs."
     ),
-    version="1.1.0",
+    version="2.0.0",
     lifespan=lifespan,
 )
 
@@ -326,23 +313,28 @@ async def root():
     return RedirectResponse("/docs")
 
 
-@app.get("/health", summary="Cache status, listing count, and next scheduled scrape")
+@app.get("/health", summary="Database stats and scheduler status")
 async def health():
-    next_run = None
-    if _scheduler is not None:
-        job = _scheduler.get_job("scheduled_scrape")
-        if job and job.next_run_time:
-            next_run = job.next_run_time.isoformat()
+    conn = _get_db()
+    stats = get_stats(conn)
 
-    age = _cache_age_hours()
+    next_runs = []
+    if _scheduler is not None:
+        for job in _scheduler.get_jobs():
+            if job.next_run_time:
+                next_runs.append({"id": job.id, "next_run": job.next_run_time.isoformat()})
+    next_runs.sort(key=lambda x: x["next_run"])
+
+    schedule_mode = "cron (6am/6pm ET)" if SCRAPE_CRON else (
+        f"interval ({SCRAPE_INTERVAL_HOURS}h)" if SCRAPE_INTERVAL_HOURS > 0 else "disabled"
+    )
+
     return {
         "status": "ok",
-        "listings_cached": _cache["total"],
-        "cached_at": _cache["generated_at"],
-        "cache_age_hours": (int(float(age) * 100) / 100) if age is not None else None,
+        **stats,
         "scrape_running": _scrape_status["running"],
-        "scrape_interval_hours": SCRAPE_INTERVAL_HOURS if SCRAPE_INTERVAL_HOURS > 0 else None,
-        "next_scheduled_scrape": next_run,
+        "schedule": schedule_mode,
+        "next_scheduled_scrapes": next_runs,
     }
 
 
@@ -355,13 +347,15 @@ async def get_listings(
     max_price: Annotated[float | None, Query(ge=0, description="Maximum monthly rent (USD)")] = None,
     min_sqft: Annotated[int | None, Query(ge=0, description="Minimum square footage")] = None,
     max_sqft: Annotated[int | None, Query(ge=0, description="Maximum square footage")] = None,
-    source: Annotated[str | None, Query(description="Filter by source: rockella | chashama | spacefinder | etc.")] = None,
+    source: Annotated[str | None, Query(description="Filter by source: rockella | nyc_opendata | etc.")] = None,
     shared_ok: Annotated[bool | None, Query(description="Filter by co-tenant availability")] = None,
-    limit: Annotated[int, Query(ge=1, le=200, description="Results per page (max 200)")] = 50,
+    include_stale: Annotated[bool, Query(description="Include stale listings (not seen in recent scrapes)")] = False,
+    limit: Annotated[int, Query(ge=1, le=2000, description="Results per page (max 2000)")] = 50,
     offset: Annotated[int, Query(ge=0, description="Pagination offset")] = 0,
 ):
-    filtered = _apply_filters(
-        _cache["listings"],
+    conn = _get_db()
+    listings, total = query_listings(
+        conn,
         q=q,
         neighborhood=neighborhood,
         borough=borough,
@@ -371,34 +365,39 @@ async def get_listings(
         max_sqft=max_sqft,
         source=source,
         shared_ok=shared_ok,
-    )
-    return ListingsResponse(
-        total=len(filtered),
-        offset=offset,
+        include_stale=include_stale,
         limit=limit,
-        cached_at=_cache["generated_at"],
-        listings=filtered[offset: offset + limit],
+        offset=offset,
     )
+    return ListingsResponse(total=total, offset=offset, limit=limit, listings=listings)
+
+
+@app.get("/listings/nearby", summary="Find studios near a location")
+async def get_nearby(
+    lat: Annotated[float, Query(description="Latitude")],
+    lng: Annotated[float, Query(description="Longitude")],
+    radius_km: Annotated[float, Query(ge=0.1, le=50, description="Search radius in km")] = 5.0,
+    limit: Annotated[int, Query(ge=1, le=100, description="Max results")] = 20,
+):
+    conn = _get_db()
+    listings = query_nearby(conn, lat=lat, lng=lng, radius_km=radius_km, limit=limit)
+    return {"total": len(listings), "listings": listings}
 
 
 @app.get("/listings/{listing_id}", summary="Get a single listing by ID")
 async def get_listing(listing_id: str):
-    for listing in _cache["listings"]:
-        if listing.get("id") == listing_id:
-            return listing
-    raise HTTPException(status_code=404, detail=f"Listing '{listing_id}' not found")
+    conn = _get_db()
+    listing = get_listing_by_id(conn, listing_id)
+    if not listing:
+        raise HTTPException(status_code=404, detail=f"Listing '{listing_id}' not found")
+    return listing
 
 
 @app.get("/sources", summary="List all available scraper sources")
 async def get_sources():
     return {
         "sources": [
-            {
-                "name": s.name,
-                "priority": s.priority,
-                "restricted": s.restricted,
-                "enabled": s.enabled,
-            }
+            {"name": s.name, "priority": s.priority, "restricted": s.restricted, "enabled": s.enabled}
             for s in SOURCES
         ]
     }
@@ -409,14 +408,9 @@ async def trigger_scrape(body: ScrapeRequest = ScrapeRequest()):
     """
     Starts a background scrape and returns immediately (HTTP 202).
     Poll `GET /scrape/status` to track progress.
-
-    - No body → runs all high-priority sources (rockella, chashama, spacefinder)
-    - `{"source": "rockella"}` → single source
-    - `{"priority": "medium"}` → all medium-priority sources
-    - `{"include_restricted": true}` → include Craigslist and StreetEasy
     """
     if _scrape_status["running"]:
-        raise HTTPException(status_code=409, detail="A scrape is already running. Poll /scrape/status.")
+        raise HTTPException(status_code=409, detail="A scrape is already running.")
 
     thread = threading.Thread(
         target=_run_scrape,
@@ -434,8 +428,7 @@ async def get_scrape_status():
     return ScrapeStatusResponse(**_scrape_status)
 
 
-@app.post("/cache/reload", summary="Reload the in-memory cache from listings.json")
-async def reload_cache():
-    """Force a cache reload without re-scraping — useful if you ran the scraper manually."""
-    _load_cache()
-    return {"listings_cached": _cache["total"], "cached_at": _cache["generated_at"]}
+@app.get("/stats", summary="Detailed database statistics")
+async def stats():
+    conn = _get_db()
+    return get_stats(conn)

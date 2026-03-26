@@ -1,517 +1,98 @@
 import Foundation
 
 enum MockData {
-    static let listings: [StudioListing] = {
-        let calendar = Calendar.current
-        let now = Date()
+    // Reference data — neighborhoods, disciplines, borough mappings.
+    // These are not mock listings; they're used by the onboarding form
+    // and filter logic regardless of where listings come from.
 
-        func futureDate(daysFromNow: Int) -> Date {
-            calendar.date(byAdding: .day, value: daysFromNow, to: now) ?? now
-        }
+    /// Single sample listing used only for SwiftUI Previews.
+    static let previewListing = StudioListing(
+        id: UUID(),
+        address: "Studio 107 · 1660 E New York Ave, Brooklyn, NY 11212",
+        neighborhood: "Brooklyn",
+        sqft: 170,
+        monthlyRent: 850,
+        photos: [],
+        amenities: ["24/7 Access", "Natural Light"],
+        leaseTermMonths: 12,
+        availableDate: Date(),
+        coTenantCompatibilityScore: 0.82,
+        latitude: 40.6579,
+        longitude: -73.9052,
+        source: "rockella",
+        sourceURL: "https://rockella.space/"
+    )
 
-        return [
-            StudioListing(
-                id: UUID(),
-                address: "Studio 107 · 1660 E New York Ave, Brooklyn, NY 11212",
-                neighborhood: "Brooklyn",
-                sqft: 170,
-                monthlyRent: 850,
-                photos: ["https://es626ix6mws.exactdn.com/wp-content/uploads/2023/09/107-scaled.jpg?strip=all&resize=310%2C388"],
-                amenities: ["24/7 Access", "Natural Light", "Shared Bathrooms"],
-                leaseTermMonths: 12,
-                availableDate: futureDate(daysFromNow: 20),
-                coTenantCompatibilityScore: nil,
-                latitude: 40.6579,
-                longitude: -73.9052
-            ),
-            StudioListing(
-                id: UUID(),
-                address: "Studio 206 · 1660 E New York Ave, Brooklyn, NY 11212",
-                neighborhood: "Brooklyn",
-                sqft: 190,
-                monthlyRent: 900,
-                photos: ["https://es626ix6mws.exactdn.com/wp-content/uploads/2024/11/206-2-scaled.jpg?strip=all&resize=310%2C244"],
-                amenities: ["24/7 Access", "Natural Light", "Shared Bathrooms"],
-                leaseTermMonths: 12,
-                availableDate: futureDate(daysFromNow: 71),
-                coTenantCompatibilityScore: nil,
-                latitude: 40.6579,
-                longitude: -73.9052
-            ),
-            StudioListing(
-                id: UUID(),
-                address: "Studio 105 · 1660 E New York Ave, Brooklyn, NY 11212",
-                neighborhood: "Brooklyn",
-                sqft: 345,
-                monthlyRent: 1400,
-                photos: ["https://es626ix6mws.exactdn.com/wp-content/uploads/2023/12/105-scaled.jpg?strip=all&resize=310%2C244"],
-                amenities: ["24/7 Access", "Natural Light", "Shared Bathrooms"],
-                leaseTermMonths: 12,
-                availableDate: futureDate(daysFromNow: 11),
-                coTenantCompatibilityScore: 0.55,
-                latitude: 40.6579,
-                longitude: -73.9052
-            ),
-            StudioListing(
-                id: UUID(),
-                address: "Studio 408 · 1660 E New York Ave, Brooklyn, NY 11212",
-                neighborhood: "Brooklyn",
-                sqft: 192,
-                monthlyRent: 900,
-                photos: ["https://es626ix6mws.exactdn.com/wp-content/uploads/2023/07/408-1-310x388.jpg?strip=all"],
-                amenities: ["24/7 Access", "Natural Light", "Shared Bathrooms"],
-                leaseTermMonths: 12,
-                availableDate: futureDate(daysFromNow: 47),
-                coTenantCompatibilityScore: 0.62,
-                latitude: 40.6579,
-                longitude: -73.9052
-            ),
-            StudioListing(
-                id: UUID(),
-                address: "Studio 217 · 1660 E New York Ave, Brooklyn, NY 11212",
-                neighborhood: "Brooklyn",
-                sqft: 302,
-                monthlyRent: 1200,
-                photos: ["https://es626ix6mws.exactdn.com/wp-content/uploads/2024/10/217-scaled.jpg?strip=all&resize=310%2C244"],
-                amenities: ["24/7 Access", "Natural Light", "Shared Bathrooms"],
-                leaseTermMonths: 12,
-                availableDate: futureDate(daysFromNow: 12),
-                coTenantCompatibilityScore: 0.68,
-                latitude: 40.6579,
-                longitude: -73.9052
-            ),
-            StudioListing(
-                id: UUID(),
-                address: "Studio 305 · 1660 E New York Ave, Brooklyn, NY 11212",
-                neighborhood: "Brooklyn",
-                sqft: 316,
-                monthlyRent: 1350,
-                photos: ["https://es626ix6mws.exactdn.com/wp-content/uploads/2025/08/305-310x388.jpg?strip=all"],
-                amenities: ["24/7 Access", "Natural Light", "Shared Bathrooms"],
-                leaseTermMonths: 12,
-                availableDate: futureDate(daysFromNow: 27),
-                coTenantCompatibilityScore: 0.74,
-                latitude: 40.6579,
-                longitude: -73.9052
-            ),
-            StudioListing(
-                id: UUID(),
-                address: "Studio 103 · 1660 E New York Ave, Brooklyn, NY 11212",
-                neighborhood: "Brooklyn",
-                sqft: 220,
-                monthlyRent: 1000,
-                photos: ["https://es626ix6mws.exactdn.com/wp-content/uploads/2025/10/118-310x388.jpg?strip=all"],
-                amenities: ["24/7 Access", "Natural Light", "Shared Bathrooms"],
-                leaseTermMonths: 12,
-                availableDate: futureDate(daysFromNow: 44),
-                coTenantCompatibilityScore: 0.79,
-                latitude: 40.6579,
-                longitude: -73.9052
-            ),
-            StudioListing(
-                id: UUID(),
-                address: "Studio 011 · 1660 E New York Ave, Brooklyn, NY 11212",
-                neighborhood: "Brooklyn",
-                sqft: 217,
-                monthlyRent: 950,
-                photos: [],
-                amenities: ["24/7 Access", "Natural Light", "Shared Bathrooms"],
-                leaseTermMonths: 12,
-                availableDate: futureDate(daysFromNow: 23),
-                coTenantCompatibilityScore: 0.85,
-                latitude: 40.6579,
-                longitude: -73.9052
-            ),
-            StudioListing(
-                id: UUID(),
-                address: "Studio 012 · 1660 E New York Ave, Brooklyn, NY 11212",
-                neighborhood: "Brooklyn",
-                sqft: 166,
-                monthlyRent: 750,
-                photos: [],
-                amenities: ["24/7 Access", "Natural Light", "Shared Bathrooms"],
-                leaseTermMonths: 12,
-                availableDate: futureDate(daysFromNow: 21),
-                coTenantCompatibilityScore: 0.91,
-                latitude: 40.6579,
-                longitude: -73.9052
-            ),
-            StudioListing(
-                id: UUID(),
-                address: "Studio 424 · 1660 E New York Ave, Brooklyn, NY 11212",
-                neighborhood: "Brooklyn",
-                sqft: 103,
-                monthlyRent: 450,
-                photos: [],
-                amenities: ["24/7 Access", "Natural Light", "Shared Bathrooms"],
-                leaseTermMonths: 12,
-                availableDate: futureDate(daysFromNow: 58),
-                coTenantCompatibilityScore: nil,
-                latitude: 40.6579,
-                longitude: -73.9052
-            ),
-            StudioListing(
-                id: UUID(),
-                address: "Studio 426 · 1660 E New York Ave, Brooklyn, NY 11212",
-                neighborhood: "Brooklyn",
-                sqft: 97,
-                monthlyRent: 450,
-                photos: [],
-                amenities: ["24/7 Access", "Natural Light", "Shared Bathrooms"],
-                leaseTermMonths: 12,
-                availableDate: futureDate(daysFromNow: 55),
-                coTenantCompatibilityScore: 0.6,
-                latitude: 40.6579,
-                longitude: -73.9052
-            ),
-            StudioListing(
-                id: UUID(),
-                address: "Studio 002 · 1660 E New York Ave, Brooklyn, NY 11212",
-                neighborhood: "Brooklyn",
-                sqft: 262,
-                monthlyRent: 1050,
-                photos: ["https://es626ix6mws.exactdn.com/wp-content/uploads/2024/10/002-scaled.jpg?strip=all&resize=310%2C244"],
-                amenities: ["24/7 Access", "Natural Light", "Shared Bathrooms"],
-                leaseTermMonths: 12,
-                availableDate: futureDate(daysFromNow: 45),
-                coTenantCompatibilityScore: 0.72,
-                latitude: 40.6579,
-                longitude: -73.9052
-            ),
-            StudioListing(
-                id: UUID(),
-                address: "Studio 118 · 1660 E New York Ave, Brooklyn, NY 11212",
-                neighborhood: "Brooklyn",
-                sqft: 200,
-                monthlyRent: 800,
-                photos: ["https://es626ix6mws.exactdn.com/wp-content/uploads/2025/10/118-310x388.jpg?strip=all"],
-                amenities: ["24/7 Access", "Natural Light", "Shared Bathrooms"],
-                leaseTermMonths: 12,
-                availableDate: futureDate(daysFromNow: 9),
-                coTenantCompatibilityScore: nil,
-                latitude: 40.6579,
-                longitude: -73.9052
-            ),
-            StudioListing(
-                id: UUID(),
-                address: "Studio 014 · 1660 E New York Ave, Brooklyn, NY 11212",
-                neighborhood: "Brooklyn",
-                sqft: 545,
-                monthlyRent: 1650,
-                photos: ["https://es626ix6mws.exactdn.com/wp-content/uploads/2023/06/Screen-Shot-2023-06-07-at-12.53.04-pm.png?strip=all&resize=310%2C388"],
-                amenities: ["24/7 Access", "Natural Light", "Shared Bathrooms"],
-                leaseTermMonths: 12,
-                availableDate: futureDate(daysFromNow: 25),
-                coTenantCompatibilityScore: nil,
-                latitude: 40.6579,
-                longitude: -73.9052
-            ),
-            StudioListing(
-                id: UUID(),
-                address: "Studio 110 · 1639 Centre St, Queens, NY 11385",
-                neighborhood: "Queens",
-                sqft: 303,
-                monthlyRent: 1600,
-                photos: ["https://es626ix6mws.exactdn.com/wp-content/uploads/2024/11/110-scaled.jpg?strip=all&resize=310%2C244"],
-                amenities: ["24/7 Access", "Natural Light", "Shared Bathrooms"],
-                leaseTermMonths: 12,
-                availableDate: futureDate(daysFromNow: 67),
-                coTenantCompatibilityScore: 0.55,
-                latitude: 40.7037,
-                longitude: -73.9131
-            ),
-            StudioListing(
-                id: UUID(),
-                address: "Studio 224 · 1639 Centre St, Queens, NY 11385",
-                neighborhood: "Queens",
-                sqft: 299,
-                monthlyRent: 1497,
-                photos: ["https://es626ix6mws.exactdn.com/wp-content/uploads/2025/07/224-310x388.jpg?strip=all", "https://es626ix6mws.exactdn.com/wp-content/uploads/2024/01/209-scaled.jpg?strip=all&resize=310%2C244"],
-                amenities: ["24/7 Access", "Natural Light", "Shared Bathrooms"],
-                leaseTermMonths: 12,
-                availableDate: futureDate(daysFromNow: 30),
-                coTenantCompatibilityScore: 0.62,
-                latitude: 40.7037,
-                longitude: -73.9131
-            ),
-            StudioListing(
-                id: UUID(),
-                address: "Studio 204 · 1639 Centre St, Queens, NY 11385",
-                neighborhood: "Queens",
-                sqft: 300,
-                monthlyRent: 1600,
-                photos: ["https://es626ix6mws.exactdn.com/wp-content/uploads/2026/02/204-310x388.jpg?strip=all"],
-                amenities: ["24/7 Access", "Natural Light", "Shared Bathrooms"],
-                leaseTermMonths: 12,
-                availableDate: futureDate(daysFromNow: 34),
-                coTenantCompatibilityScore: 0.68,
-                latitude: 40.7037,
-                longitude: -73.9131
-            ),
-            StudioListing(
-                id: UUID(),
-                address: "Studio 208 · 1639 Centre St, Queens, NY 11385",
-                neighborhood: "Queens",
-                sqft: 288,
-                monthlyRent: 1600,
-                photos: ["https://es626ix6mws.exactdn.com/wp-content/uploads/2024/02/208-310x388.jpg?strip=all"],
-                amenities: ["24/7 Access", "Natural Light", "Shared Bathrooms"],
-                leaseTermMonths: 12,
-                availableDate: futureDate(daysFromNow: 38),
-                coTenantCompatibilityScore: 0.74,
-                latitude: 40.7037,
-                longitude: -73.9131
-            ),
-            StudioListing(
-                id: UUID(),
-                address: "Studio 273 · 1639 Centre St, Queens, NY 11385",
-                neighborhood: "Queens",
-                sqft: 198,
-                monthlyRent: 990,
-                photos: ["https://es626ix6mws.exactdn.com/wp-content/uploads/2024/07/273-scaled.jpg?strip=all&resize=310%2C244"],
-                amenities: ["24/7 Access", "Natural Light", "Shared Bathrooms"],
-                leaseTermMonths: 12,
-                availableDate: futureDate(daysFromNow: 49),
-                coTenantCompatibilityScore: 0.79,
-                latitude: 40.7037,
-                longitude: -73.9131
-            ),
-            StudioListing(
-                id: UUID(),
-                address: "Studio 293 · 1639 Centre St, Queens, NY 11385",
-                neighborhood: "Queens",
-                sqft: 204,
-                monthlyRent: 1023,
-                photos: ["https://es626ix6mws.exactdn.com/wp-content/uploads/2025/09/293-310x388.jpg?strip=all"],
-                amenities: ["24/7 Access", "Natural Light", "Shared Bathrooms"],
-                leaseTermMonths: 12,
-                availableDate: futureDate(daysFromNow: 53),
-                coTenantCompatibilityScore: 0.85,
-                latitude: 40.7037,
-                longitude: -73.9131
-            ),
-            StudioListing(
-                id: UUID(),
-                address: "Studio 109 · 1639 Centre St, Queens, NY 11385",
-                neighborhood: "Queens",
-                sqft: 225,
-                monthlyRent: 1125,
-                photos: [],
-                amenities: ["24/7 Access", "Natural Light", "Shared Bathrooms"],
-                leaseTermMonths: 12,
-                availableDate: futureDate(daysFromNow: 13),
-                coTenantCompatibilityScore: 0.91,
-                latitude: 40.7037,
-                longitude: -73.9131
-            ),
-            StudioListing(
-                id: UUID(),
-                address: "Studio 163 · 1639 Centre St, Queens NY 11385",
-                neighborhood: "Queens",
-                sqft: 175,
-                monthlyRent: 875,
-                photos: [],
-                amenities: ["24/7 Access", "Natural Light", "Shared Bathrooms"],
-                leaseTermMonths: 12,
-                availableDate: futureDate(daysFromNow: 24),
-                coTenantCompatibilityScore: nil,
-                latitude: 40.7037,
-                longitude: -73.9131
-            ),
-            StudioListing(
-                id: UUID(),
-                address: "Studio 124 · 1639 Centre St, Queens, NY 11385",
-                neighborhood: "Queens",
-                sqft: 292,
-                monthlyRent: 1460,
-                photos: [],
-                amenities: ["24/7 Access", "Natural Light", "Shared Bathrooms"],
-                leaseTermMonths: 12,
-                availableDate: futureDate(daysFromNow: 28),
-                coTenantCompatibilityScore: 0.6,
-                latitude: 40.7037,
-                longitude: -73.9131
-            ),
-            StudioListing(
-                id: UUID(),
-                address: "Studio 136 · 1639 Centre St, Queens, NY 11385",
-                neighborhood: "Queens",
-                sqft: 170,
-                monthlyRent: 850,
-                photos: ["https://es626ix6mws.exactdn.com/wp-content/uploads/2024/01/136-scaled.jpg?strip=all&resize=310%2C244"],
-                amenities: ["24/7 Access", "Natural Light", "Shared Bathrooms"],
-                leaseTermMonths: 12,
-                availableDate: futureDate(daysFromNow: 16),
-                coTenantCompatibilityScore: 0.72,
-                latitude: 40.7037,
-                longitude: -73.9131
-            ),
-            StudioListing(
-                id: UUID(),
-                address: "Studio 147 · 1639 Centre St, Queens NY 11385",
-                neighborhood: "Queens",
-                sqft: 159,
-                monthlyRent: 795,
-                photos: ["https://es626ix6mws.exactdn.com/wp-content/uploads/2024/02/147-scaled.jpg?strip=all&resize=310%2C244"],
-                amenities: ["24/7 Access", "Natural Light", "Shared Bathrooms"],
-                leaseTermMonths: 12,
-                availableDate: futureDate(daysFromNow: 66),
-                coTenantCompatibilityScore: nil,
-                latitude: 40.7037,
-                longitude: -73.9131
-            ),
-            StudioListing(
-                id: UUID(),
-                address: "Studio 229 · 1639 Centre St, Queens, NY 11385",
-                neighborhood: "Queens",
-                sqft: 156,
-                monthlyRent: 775,
-                photos: ["https://es626ix6mws.exactdn.com/wp-content/uploads/2024/12/229-scaled.jpg?strip=all&resize=310%2C244"],
-                amenities: ["24/7 Access", "Natural Light", "Shared Bathrooms"],
-                leaseTermMonths: 12,
-                availableDate: futureDate(daysFromNow: 51),
-                coTenantCompatibilityScore: nil,
-                latitude: 40.7037,
-                longitude: -73.9131
-            ),
-            StudioListing(
-                id: UUID(),
-                address: "Studio 2411 · 520 8th Ave, New York, NY 10018",
-                neighborhood: "Manhattan",
-                sqft: 171,
-                monthlyRent: 1950,
-                photos: ["https://es626ix6mws.exactdn.com/wp-content/uploads/2024/04/manhattan-monster-min-400x298.png?strip=all"],
-                amenities: ["Private Studio", "Communal Area", "Free Wi-Fi", "Lounge area", "Kitchenette", "Freight elevator during business hours", "HVAC", "24/7 Security Access", "Mail room", "Surveillance Cameras", "After Hours Onsite Security", "Super on premises"],
-                leaseTermMonths: 12,
-                availableDate: futureDate(daysFromNow: 60),
-                coTenantCompatibilityScore: 0.55,
-                latitude: 40.7527,
-                longitude: -73.9967
-            ),
-            StudioListing(
-                id: UUID(),
-                address: "Studio 2406",
-                neighborhood: "Manhattan",
-                sqft: 126,
-                monthlyRent: 1764,
-                photos: [],
-                amenities: ["Private Studio", "Communal Area", "Free Wi-Fi", "Lounge area", "Kitchenette", "Freight elevator during business hours", "HVAC", "24/7 Security Access", "Mail room", "Surveillance Cameras", "After Hours Onsite Security", "Super on premises"],
-                leaseTermMonths: 12,
-                availableDate: futureDate(daysFromNow: 73),
-                coTenantCompatibilityScore: 0.62,
-                latitude: 40.7527,
-                longitude: -73.9967
-            ),
-            StudioListing(
-                id: UUID(),
-                address: "Studio 2409",
-                neighborhood: "Manhattan",
-                sqft: 295,
-                monthlyRent: 2950,
-                photos: [],
-                amenities: ["Private Studio", "Communal Area", "Free Wi-Fi", "Lounge area", "Kitchenette", "Freight elevator during business hours", "HVAC", "24/7 Security Access", "Mail room", "Surveillance Cameras", "After Hours Onsite Security", "Super on premises"],
-                leaseTermMonths: 12,
-                availableDate: futureDate(daysFromNow: 41),
-                coTenantCompatibilityScore: 0.68,
-                latitude: 40.7527,
-                longitude: -73.9967
-            ),
-            StudioListing(
-                id: UUID(),
-                address: "Studio 2451 · 520 8th Ave, New York, NY 10018",
-                neighborhood: "Manhattan",
-                sqft: 149,
-                monthlyRent: 1200,
-                photos: [],
-                amenities: ["Private Studio", "Communal Area", "Free Wi-Fi", "Lounge area", "Kitchenette", "Freight elevator during business hours", "HVAC", "24/7 Security Access", "Mail room", "Surveillance Cameras", "After Hours Onsite Security", "Super on premises"],
-                leaseTermMonths: 12,
-                availableDate: futureDate(daysFromNow: 29),
-                coTenantCompatibilityScore: 0.74,
-                latitude: 40.7527,
-                longitude: -73.9967
-            ),
-            StudioListing(
-                id: UUID(),
-                address: "Studio 2403 · 520 8th Ave, New York, NY 10018",
-                neighborhood: "Manhattan",
-                sqft: 145,
-                monthlyRent: 1100,
-                photos: [],
-                amenities: ["Private Studio", "Communal Area", "Free Wi-Fi", "Lounge area", "Kitchenette", "Freight elevator during business hours", "HVAC", "24/7 Security Access", "Mail room", "Surveillance Cameras", "After Hours Onsite Security", "Super on premises"],
-                leaseTermMonths: 12,
-                availableDate: futureDate(daysFromNow: 35),
-                coTenantCompatibilityScore: 0.79,
-                latitude: 40.7527,
-                longitude: -73.9967
-            ),
-            StudioListing(
-                id: UUID(),
-                address: "Studio 2443 · 520 8th Ave, New York, NY 10018",
-                neighborhood: "Manhattan",
-                sqft: 148,
-                monthlyRent: 1184,
-                photos: [],
-                amenities: ["Private Studio", "Communal Area", "Free Wi-Fi", "Lounge area", "Kitchenette", "Freight elevator during business hours", "HVAC", "24/7 Security Access", "Mail room", "Surveillance Cameras", "After Hours Onsite Security", "Super on premises"],
-                leaseTermMonths: 12,
-                availableDate: futureDate(daysFromNow: 57),
-                coTenantCompatibilityScore: 0.85,
-                latitude: 40.7527,
-                longitude: -73.9967
-            ),
-            StudioListing(
-                id: UUID(),
-                address: "Studio 2452 · 520 8th Ave, New York, NY 10018",
-                neighborhood: "Manhattan",
-                sqft: 134,
-                monthlyRent: 1050,
-                photos: [],
-                amenities: ["Private Studio", "Communal Area", "Free Wi-Fi", "Lounge area", "Kitchenette", "Freight elevator during business hours", "HVAC", "24/7 Security Access", "Mail room", "Surveillance Cameras", "After Hours Onsite Security", "Super on premises"],
-                leaseTermMonths: 12,
-                availableDate: futureDate(daysFromNow: 14),
-                coTenantCompatibilityScore: 0.91,
-                latitude: 40.7527,
-                longitude: -73.9967
-            )
-        ]
-    }()
+    // MARK: - Neighborhoods (grouped by borough)
 
-    static let neighborhoods: [String] = [
-        "Astoria",
-        "Bed-Stuy",
-        "Brooklyn",
-        "Bushwick",
-        "Crown Heights",
-        "East New York",
-        "Flatbush",
-        "Gowanus",
-        "Greenpoint",
-        "Harlem",
-        "Inwood",
-        "Jamaica",
-        "Long Island City",
-        "Manhattan",
-        "Mott Haven",
-        "Queens",
-        "Red Hook",
-        "Ridgewood",
-        "South Bronx",
-        "Sunnyside",
-        "Sunset Park",
-        "The Bronx",
-        "Washington Heights",
-        "Williamsburg"
+    /// All selectable neighborhoods, organized by borough for the picker UI.
+    static let neighborhoodsByBorough: [(borough: String, neighborhoods: [String])] = [
+        ("Manhattan", [
+            "Alphabet City", "Chelsea", "Chinatown", "East Harlem", "East Village",
+            "Financial District", "Flatiron", "Gramercy", "Greenwich Village",
+            "Harlem", "Hell's Kitchen", "Inwood", "Little Italy", "Lower East Side",
+            "Midtown", "Midtown East", "Murray Hill", "NoHo", "NoLita",
+            "Roosevelt Island", "SoHo", "Tribeca", "Union Square",
+            "Upper East Side", "Upper West Side", "Washington Heights", "West Village"
+        ]),
+        ("Brooklyn", [
+            "Bay Ridge", "Bed-Stuy", "Boerum Hill", "Brooklyn Heights",
+            "Bushwick", "Carroll Gardens", "Clinton Hill", "Cobble Hill",
+            "Crown Heights", "DUMBO", "Downtown Brooklyn", "East New York",
+            "East Williamsburg", "Flatbush", "Fort Greene", "Gowanus",
+            "Greenpoint", "Park Slope", "Prospect Heights", "Prospect Lefferts Gardens",
+            "Red Hook", "Sunset Park", "Williamsburg"
+        ]),
+        ("Queens", [
+            "Astoria", "Bayside", "Corona", "East Elmhurst", "Elmhurst",
+            "Far Rockaway", "Flushing", "Forest Hills", "Jackson Heights",
+            "Jamaica", "Kew Gardens", "Long Island City", "Maspeth",
+            "Rego Park", "Richmond Hill", "Ridgewood", "Sunnyside", "Woodside"
+        ]),
+        ("The Bronx", [
+            "Concourse", "Fordham", "Hunts Point", "Kingsbridge",
+            "Mott Haven", "Port Morris", "Riverdale", "South Bronx"
+        ]),
+        ("Staten Island", [
+            "St. George", "Stapleton"
+        ]),
     ]
 
+    /// Flat list of all neighborhoods for convenience.
+    static let neighborhoods: [String] = neighborhoodsByBorough.flatMap { $0.neighborhoods }
+
+    /// All borough names.
+    static let boroughs: [String] = neighborhoodsByBorough.map { $0.borough }
+
     /// Borough-level entries and their constituent neighborhoods — used for broad filtering.
-    static let boroughNeighborhoods: [String: [String]] = [
-        "Brooklyn": ["Bushwick", "Williamsburg", "Gowanus", "Bed-Stuy", "Crown Heights",
-                     "Greenpoint", "Red Hook", "Sunset Park", "East New York", "Flatbush",
-                     "Dumbo", "Park Slope", "Carroll Gardens", "Cobble Hill", "Fort Greene"],
-        "Manhattan": ["Harlem", "Inwood", "Washington Heights", "East Harlem", "SoHo",
-                      "Chelsea", "Lower East Side", "East Village", "West Village", "Midtown", "Tribeca"],
-        "Queens": ["Long Island City", "Astoria", "Jamaica", "Ridgewood", "Sunnyside",
-                   "Flushing", "Jackson Heights"],
-        "The Bronx": ["South Bronx", "Mott Haven", "Hunts Point", "Port Morris"],
+    static let boroughNeighborhoods: [String: [String]] = {
+        var dict: [String: [String]] = [:]
+        for group in neighborhoodsByBorough {
+            dict[group.borough] = group.neighborhoods
+        }
+        return dict
+    }()
+
+    /// Maps variant neighborhood names from the DB to canonical borough names.
+    /// This handles "New York" → Manhattan, "Brooklyn" → Brooklyn, etc.
+    static let neighborhoodToBoroughFallback: [String: String] = [
+        "New York": "Manhattan",
+        "NEW YORK": "Manhattan",
+        "New york": "Manhattan",
+        "New York City": "Manhattan",
+        "NYC": "Manhattan",
+        "NY": "Manhattan",
+        "N.Y.": "Manhattan",
+        "Brooklyn": "Brooklyn",
+        "BROOKLYN": "Brooklyn",
+        "brooklyn": "Brooklyn",
+        "Queens": "Queens",
+        "Bronx": "The Bronx",
+        "BRONX": "The Bronx",
+        "NewBronx": "The Bronx",
+        "Staten Island": "Staten Island",
+        "STATEN ISLAND": "Staten Island",
+        "LIC": "Queens",
     ]
 
     static let disciplines: [String] = [

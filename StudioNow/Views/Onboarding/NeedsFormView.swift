@@ -174,6 +174,20 @@ struct NeedsFormView: View {
         selectedNeighborhoods.count == MockData.neighborhoods.count
     }
 
+    private func boroughAllSelected(_ borough: String) -> Bool {
+        guard let subs = MockData.boroughNeighborhoods[borough] else { return false }
+        return subs.allSatisfy { selectedNeighborhoods.contains($0) }
+    }
+
+    private func toggleBorough(_ borough: String) {
+        guard let subs = MockData.boroughNeighborhoods[borough] else { return }
+        if boroughAllSelected(borough) {
+            subs.forEach { selectedNeighborhoods.remove($0) }
+        } else {
+            subs.forEach { selectedNeighborhoods.insert($0) }
+        }
+    }
+
     private var neighborhoodSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -192,47 +206,65 @@ struct NeedsFormView: View {
                         .foregroundStyle(accent)
                 }
             }
-            Text("Select all that interest you. Leave empty to see all.")
+            Text("Select all that interest you. Leave empty to see all areas.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
-            VStack(spacing: 0) {
-                ForEach(Array(MockData.neighborhoods.enumerated()), id: \.element) { index, neighborhood in
+            ForEach(MockData.neighborhoodsByBorough, id: \.borough) { group in
+                VStack(spacing: 0) {
+                    // Borough header row — tappable to select/deselect all in borough
                     Button {
-                        if selectedNeighborhoods.contains(neighborhood) {
-                            selectedNeighborhoods.remove(neighborhood)
-                        } else {
-                            selectedNeighborhoods.insert(neighborhood)
-                        }
+                        toggleBorough(group.borough)
                     } label: {
                         HStack {
-                            Text(neighborhood)
-                                .font(.body)
+                            Text(group.borough)
+                                .font(.subheadline)
+                                .fontWeight(.bold)
                                 .foregroundStyle(accent)
                             Spacer()
-                            if selectedNeighborhoods.contains(neighborhood) {
-                                Image(systemName: "checkmark")
-                                    .font(.system(size: 13, weight: .semibold))
-                                    .foregroundStyle(accent)
-                            }
+                            Text(boroughAllSelected(group.borough) ? "Deselect" : "Select All")
+                                .font(.caption)
+                                .foregroundStyle(accent.opacity(0.5))
                         }
                         .padding(.horizontal, 16)
-                        .padding(.vertical, 12)
-                        .background(
-                            selectedNeighborhoods.contains(neighborhood)
-                            ? accent.opacity(0.06)
-                            : Color.white
-                        )
+                        .padding(.vertical, 10)
+                        .background(accent.opacity(0.04))
                     }
 
-                    if index < MockData.neighborhoods.count - 1 {
-                        Divider()
-                            .padding(.leading, 16)
+                    ForEach(group.neighborhoods, id: \.self) { neighborhood in
+                        Divider().padding(.leading, 16)
+
+                        Button {
+                            if selectedNeighborhoods.contains(neighborhood) {
+                                selectedNeighborhoods.remove(neighborhood)
+                            } else {
+                                selectedNeighborhoods.insert(neighborhood)
+                            }
+                        } label: {
+                            HStack {
+                                Text(neighborhood)
+                                    .font(.body)
+                                    .foregroundStyle(accent)
+                                Spacer()
+                                if selectedNeighborhoods.contains(neighborhood) {
+                                    Image(systemName: "checkmark")
+                                        .font(.system(size: 13, weight: .semibold))
+                                        .foregroundStyle(accent)
+                                }
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 11)
+                            .background(
+                                selectedNeighborhoods.contains(neighborhood)
+                                ? accent.opacity(0.06)
+                                : Color.white
+                            )
+                        }
                     }
                 }
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .shadow(color: .black.opacity(0.06), radius: 8, y: 2)
             }
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .shadow(color: .black.opacity(0.06), radius: 8, y: 2)
         }
         .onAppear {
             if let saved = appState.needs {

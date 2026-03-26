@@ -41,6 +41,8 @@ struct MatchResultsView: View {
 
                 if appState.isLoadingListings {
                     loadingView
+                } else if let error = appState.apiError, appState.listings.isEmpty {
+                    errorView(error)
                 } else if selectedSegment == 0 {
                     listView
                 } else {
@@ -62,6 +64,15 @@ struct MatchResultsView: View {
                     } label: {
                         Image(systemName: "arrow.clockwise")
                             .foregroundStyle(accent)
+                    }
+                    if appState.needs != nil {
+                        Button {
+                            appState.clearNeeds()
+                        } label: {
+                            Text("Clear")
+                                .font(.subheadline)
+                                .foregroundStyle(accent)
+                        }
                     }
                     Button {
                         showingFilters = true
@@ -173,7 +184,7 @@ struct MatchResultsView: View {
     private var mapView: some View {
         ZStack(alignment: .bottom) {
             Map(position: $mapPosition) {
-                ForEach(listings) { listing in
+                ForEach(listings.filter { $0.latitude != 0 && $0.longitude != 0 }) { listing in
                     Annotation(listing.neighborhood, coordinate: CLLocationCoordinate2D(
                         latitude: listing.latitude,
                         longitude: listing.longitude
@@ -190,7 +201,7 @@ struct MatchResultsView: View {
                                         .frame(width: 36, height: 36)
                                         .shadow(color: .black.opacity(0.15), radius: 6, y: 2)
 
-                                    Text("$\(listing.monthlyRent / 100)c")
+                                    Text(mapPinLabel(listing))
                                         .font(.system(size: 9, weight: .bold))
                                         .foregroundStyle(selectedListing?.id == listing.id ? Color.white : accent)
                                 }
@@ -240,7 +251,7 @@ struct MatchResultsView: View {
                         .fontWeight(.semibold)
                         .foregroundStyle(accent)
                         .lineLimit(1)
-                    Text("\(listing.sqft) sq ft · $\(listing.monthlyRent)/mo")
+                    Text(listingSubtitle(listing))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -257,6 +268,57 @@ struct MatchResultsView: View {
             .shadow(color: .black.opacity(0.1), radius: 12, y: 4)
         }
         .buttonStyle(.plain)
+    }
+
+    private func mapPinLabel(_ listing: StudioListing) -> String {
+        guard listing.monthlyRent > 0 else { return "●" }
+        if listing.monthlyRent >= 1000 {
+            let k = Double(listing.monthlyRent) / 1000.0
+            return k.truncatingRemainder(dividingBy: 1) == 0
+                ? "$\(Int(k))k"
+                : String(format: "$%.1fk", k)
+        }
+        return "$\(listing.monthlyRent)"
+    }
+
+    private func listingSubtitle(_ listing: StudioListing) -> String {
+        var parts: [String] = []
+        if listing.sqft > 0 { parts.append("\(listing.sqft) sq ft") }
+        if listing.monthlyRent > 0 { parts.append("$\(listing.monthlyRent)/mo") }
+        return parts.isEmpty ? "Contact for details" : parts.joined(separator: " · ")
+    }
+
+    // MARK: - Error State
+    private func errorView(_ message: String) -> some View {
+        VStack(spacing: 16) {
+            Spacer()
+            Image(systemName: "wifi.exclamationmark")
+                .font(.system(size: 48))
+                .foregroundStyle(accent.opacity(0.25))
+            Text("Unable to Load Listings")
+                .font(.title3)
+                .fontWeight(.semibold)
+                .foregroundStyle(accent)
+            Text(message)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 40)
+            Button {
+                Task { await appState.refreshListings() }
+            } label: {
+                Label("Try Again", systemImage: "arrow.clockwise")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 12)
+                    .background(accent)
+                    .clipShape(Capsule())
+            }
+            .padding(.top, 8)
+            Spacer()
+        }
     }
 
     // MARK: - Empty State

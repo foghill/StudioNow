@@ -117,9 +117,9 @@ struct SpaceDetailView: View {
 
             // Stats Row
             HStack(spacing: 0) {
-                statItem(value: "\(listing.sqft)", unit: "sq ft", icon: "square.dashed")
+                statItem(value: listing.sqft > 0 ? "\(listing.sqft)" : "—", unit: "sq ft", icon: "square.dashed")
                 Divider().frame(height: 40)
-                statItem(value: "$\(listing.monthlyRent)", unit: "per month", icon: "dollarsign.circle")
+                statItem(value: listing.monthlyRent > 0 ? "$\(listing.monthlyRent)" : "Contact", unit: listing.monthlyRent > 0 ? "per month" : "for pricing", icon: "dollarsign.circle")
                 Divider().frame(height: 40)
                 statItem(value: "\(listing.leaseTermMonths)", unit: "mo lease", icon: "calendar")
             }
@@ -127,6 +127,22 @@ struct SpaceDetailView: View {
             .background(Color.white)
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .shadow(color: .black.opacity(0.06), radius: 8, y: 2)
+
+            // Source attribution
+            if !listing.sourceLabel.isEmpty {
+                HStack(spacing: 6) {
+                    Image(systemName: "link")
+                        .font(.system(size: 11))
+                    if let url = URL(string: listing.sourceURL), !listing.sourceURL.isEmpty {
+                        Link("View on \(listing.sourceLabel)", destination: url)
+                            .font(.caption)
+                    } else {
+                        Text("Source: \(listing.sourceLabel)")
+                            .font(.caption)
+                    }
+                }
+                .foregroundStyle(accent.opacity(0.45))
+            }
 
             // Available Date
             HStack(spacing: 10) {
@@ -270,7 +286,7 @@ struct SpaceDetailView: View {
 
 #Preview {
     NavigationStack {
-        SpaceDetailView(listing: MockData.listings[0])
+        SpaceDetailView(listing: MockData.previewListing)
             .environmentObject(AppState())
     }
 }
