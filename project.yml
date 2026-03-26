@@ -1,0 +1,26 @@
+name: StudioNow
+options:
+  bundleIdPrefix: com.worthlessstudios
+  deploymentTarget:
+    iOS: "17.0"
+  xcodeVersion: "16"
+targets:
+  StudioNow:
+    type: application
+    platform: iOS
+    sources:
+      - StudioNow
+    info:
+      path: StudioNow/Info.plist
+      properties:
+        UILaunchScreen:
+          UIColorName: ""
+        NSLocationWhenInUseUsageDescription: "Used to show nearby studio spaces."
+        UIUserInterfaceStyle: Light
+    settings:
+      SWIFT_VERSION: "6.0"
+      PRODUCT_BUNDLE_IDENTIFIER: com.worthlessstudios.studionow
+      DEVELOPMENT_TEAM: ""
+      CODE_SIGN_IDENTITY: ""
+      CODE_SIGNING_REQUIRED: NO
+      CODE_SIGNING_ALLOWED: NO
