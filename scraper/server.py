@@ -111,12 +111,21 @@ def _run_scrape(source: str | None, priority: str | None, include_restricted: bo
     all_errors: list[str] = []
     run_id = None
 
+    # Sources that use public APIs and don't need a Firecrawl client
+    API_ONLY_SOURCES = {"nyc_opendata", "coworker"}
+
     try:
         from .client import CreditExhaustedError, FirecrawlClient
 
         config = Config()
-        config.validate()
-        client = FirecrawlClient(config)
+
+        # Create Firecrawl client lazily — only if needed
+        firecrawl_client = None
+        try:
+            config.validate()
+            firecrawl_client = FirecrawlClient(config)
+        except ValueError:
+            logger.warning("FIRECRAWL_API_KEY not set — only API-based sources will run")
 
         if source:
             names = [source]
@@ -129,7 +138,14 @@ def _run_scrape(source: str | None, priority: str | None, include_restricted: bo
 
         for name in names:
             try:
+                # Skip Firecrawl-dependent sources when the key is missing
+                if name not in API_ONLY_SOURCES and firecrawl_client is None:
+                    logger.info("Skipping %s (no Firecrawl API key)", name)
+                    all_errors.append(f"{name}: skipped (no FIRECRAWL_API_KEY)")
+                    continue
+
                 cls = _import_scraper(name)
+                client = None if name in API_ONLY_SOURCES else firecrawl_client
                 scraper = cls(client=client, config=config)
                 result = scraper.run()
                 save_raw(name, [l.model_dump(mode="json") for l in result.listings], config)
