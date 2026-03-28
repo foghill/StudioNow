@@ -428,6 +428,32 @@ async def get_scrape_status():
     return ScrapeStatusResponse(**_scrape_status)
 
 
+@app.post("/seed", status_code=200, summary="Seed database from uploaded listings JSON")
+async def seed_listings(body: dict):
+    """
+    Accept a listings.json payload and import into the database.
+    Body should be: {"listings": [...]}
+    """
+    from .db import import_from_json as _import_json  # noqa: avoid name clash
+    import tempfile, json as _json
+
+    raw_listings = body.get("listings", [])
+    if not raw_listings:
+        raise HTTPException(status_code=400, detail="No listings in payload")
+
+    # Write to a temp file and use existing import logic
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+        _json.dump({"listings": raw_listings}, f)
+        tmp_path = f.name
+
+    try:
+        conn = _get_db()
+        counts = _import_json(conn, tmp_path)
+        return {"message": "Seed complete", **counts}
+    finally:
+        os.unlink(tmp_path)
+
+
 @app.get("/stats", summary="Detailed database statistics")
 async def stats():
     conn = _get_db()
