@@ -49,6 +49,8 @@ _scrape_status: dict = {
     "last_source": None,
     "listings_added": 0,
     "error": None,
+    "errors": [],
+    "details": [],
 }
 
 _scrape_lock = threading.Lock()
@@ -101,6 +103,8 @@ def _run_scrape(source: str | None, priority: str | None, include_restricted: bo
             return
         _scrape_status["running"] = True
         _scrape_status["error"] = None
+        _scrape_status["errors"] = []
+        _scrape_status["details"] = []
         _scrape_status["last_source"] = source or priority or "high-priority"
 
     conn = _get_db()
@@ -166,6 +170,16 @@ def _run_scrape(source: str | None, priority: str | None, include_restricted: bo
                 total_credits += result.credits_used
                 all_errors.extend(result.errors)
 
+                detail = {
+                    "source": name,
+                    "scraped": len(result.listings),
+                    "normalized": len(normalized),
+                    "inserted": counts["inserted"],
+                    "updated": counts["updated"],
+                    "staled": staled,
+                    "source_errors": result.errors,
+                }
+                _scrape_status["details"].append(detail)
                 logger.info(
                     "%s: %d listings (%d new, %d updated, %d staled), %d credits",
                     name, len(normalized), counts["inserted"], counts["updated"],
@@ -181,6 +195,7 @@ def _run_scrape(source: str | None, priority: str | None, include_restricted: bo
 
         _scrape_status["last_run"] = datetime.now(timezone.utc).isoformat()
         _scrape_status["listings_added"] = total_inserted + total_updated
+        _scrape_status["errors"] = all_errors
         logger.info(
             "Scrape complete: %d inserted, %d updated, %d staled",
             total_inserted, total_updated, total_staled,
@@ -233,6 +248,8 @@ class ScrapeStatusResponse(BaseModel):
     last_source: str | None
     listings_added: int
     error: str | None
+    errors: list[str] = []
+    details: list[dict] = []
 
 
 # ── App ───────────────────────────────────────────────────────────────────────
