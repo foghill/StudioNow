@@ -22,10 +22,8 @@ logger = logging.getLogger(__name__)
 # Socrata API endpoint for DCLA Cultural Organizations
 API_URL = "https://data.cityofnewyork.us/resource/u35m-9t32.json"
 
-# NYC Open Data app token — set via env var or .env file
+# NYC Open Data app token — read at scrape time so Railway env var updates take effect
 # Get yours free at: https://data.cityofnewyork.us/profile/edit/developer_settings
-NYC_OPENDATA_APP_TOKEN = os.environ.get("NYC_OPENDATA_APP_TOKEN", "")
-NYC_OPENDATA_SECRET_KEY = os.environ.get("NYC_OPENDATA_SECRET_KEY", "")
 
 # SoQL query: filter for organizations related to studio/art/workspace
 # $where filters by discipline containing relevant keywords
@@ -71,14 +69,18 @@ class NycOpendataScraper:
 
         try:
             headers = {"Accept": "application/json"}
+            app_token = os.environ.get("NYC_OPENDATA_APP_TOKEN", "")
+            secret_key = os.environ.get("NYC_OPENDATA_SECRET_KEY", "")
             # Socrata auth: app token + secret key via HTTP Basic auth
             auth = None
-            if NYC_OPENDATA_APP_TOKEN and NYC_OPENDATA_SECRET_KEY:
-                auth = httpx.BasicAuth(NYC_OPENDATA_APP_TOKEN, NYC_OPENDATA_SECRET_KEY)
+            if app_token and secret_key:
+                auth = httpx.BasicAuth(app_token, secret_key)
                 logger.info("Using NYC Open Data authenticated access (app token + secret key)")
-            elif NYC_OPENDATA_APP_TOKEN:
-                headers["X-App-Token"] = NYC_OPENDATA_APP_TOKEN
+            elif app_token:
+                headers["X-App-Token"] = app_token
                 logger.info("Using NYC Open Data app token (unauthenticated, higher rate limit)")
+            else:
+                logger.warning("No NYC_OPENDATA_APP_TOKEN set — request may be rate-limited")
 
             resp = httpx.get(
                 API_URL,
