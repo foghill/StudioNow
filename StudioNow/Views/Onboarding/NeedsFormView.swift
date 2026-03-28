@@ -8,10 +8,11 @@ struct NeedsFormView: View {
     /// Saving dismisses the sheet instead of pushing a new results screen.
     var isSheet: Bool = false
 
-    @State private var minSqft: Int = 200
-    @State private var maxSqft: Int = 600
-    @State private var selectedNeighborhoods: Set<String> = []
-    @State private var maxMonthlyBudget: Double = 1500
+    @State private var minSqft: Int = 50
+    @State private var maxSqft: Int = 10000
+    @State private var selectedBoroughs: Set<String> = Set(MockData.boroughs)
+    @State private var expandedBoroughs: Set<String> = []
+    @State private var maxMonthlyBudget: Double = 5000
     @State private var leaseStart: Date = Date()
     @State private var leaseDurationMonths: Int = 12
     @State private var openToCoTenants: Bool = false
@@ -71,6 +72,14 @@ struct NeedsFormView: View {
     }
 
     // MARK: - Sqft Section
+
+    /// Variable step size: 50 below 500, 100 up to 2000, 500 above that
+    private func sqftStep(for value: Int) -> Int {
+        if value < 500 { return 50 }
+        if value < 2000 { return 100 }
+        return 500
+    }
+
     private var sqftSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             sectionHeader("Square Footage")
@@ -83,17 +92,19 @@ struct NeedsFormView: View {
                         .foregroundStyle(.secondary)
                         .frame(width: 30, alignment: .leading)
 
-                    Text("\(minSqft) sq ft")
+                    Text(minSqft == 50 ? "Any" : "\(minSqft) sq ft")
                         .font(.subheadline)
                         .fontWeight(.semibold)
                         .foregroundStyle(accent)
-                        .frame(width: 80)
+                        .frame(width: 90)
 
                     Spacer()
 
                     HStack(spacing: 0) {
                         Button {
-                            if minSqft > 100 { minSqft -= 50 }
+                            let step = sqftStep(for: minSqft)
+                            if minSqft - step >= 50 { minSqft -= step }
+                            else { minSqft = 50 }
                         } label: {
                             Image(systemName: "minus")
                                 .font(.system(size: 12, weight: .semibold))
@@ -105,7 +116,8 @@ struct NeedsFormView: View {
                         .foregroundStyle(accent)
 
                         Button {
-                            if minSqft < maxSqft - 50 { minSqft += 50 }
+                            let step = sqftStep(for: minSqft)
+                            if minSqft + step < maxSqft { minSqft += step }
                         } label: {
                             Image(systemName: "plus")
                                 .font(.system(size: 12, weight: .semibold))
@@ -126,17 +138,18 @@ struct NeedsFormView: View {
                         .foregroundStyle(.secondary)
                         .frame(width: 30, alignment: .leading)
 
-                    Text("\(maxSqft) sq ft")
+                    Text(maxSqft >= 10000 ? "Any" : "\(maxSqft) sq ft")
                         .font(.subheadline)
                         .fontWeight(.semibold)
                         .foregroundStyle(accent)
-                        .frame(width: 80)
+                        .frame(width: 90)
 
                     Spacer()
 
                     HStack(spacing: 0) {
                         Button {
-                            if maxSqft > minSqft + 50 { maxSqft -= 50 }
+                            let step = sqftStep(for: maxSqft)
+                            if maxSqft - step > minSqft { maxSqft -= step }
                         } label: {
                             Image(systemName: "minus")
                                 .font(.system(size: 12, weight: .semibold))
@@ -148,7 +161,9 @@ struct NeedsFormView: View {
                         .foregroundStyle(accent)
 
                         Button {
-                            if maxSqft < 2000 { maxSqft += 50 }
+                            let step = sqftStep(for: maxSqft)
+                            if maxSqft + step <= 10000 { maxSqft += step }
+                            else { maxSqft = 10000 }
                         } label: {
                             Image(systemName: "plus")
                                 .font(.system(size: 12, weight: .semibold))
@@ -170,105 +185,118 @@ struct NeedsFormView: View {
     }
 
     // MARK: - Neighborhood Section
-    private var allSelected: Bool {
-        selectedNeighborhoods.count == MockData.neighborhoods.count
-    }
 
-    private func boroughAllSelected(_ borough: String) -> Bool {
-        guard let subs = MockData.boroughNeighborhoods[borough] else { return false }
-        return subs.allSatisfy { selectedNeighborhoods.contains($0) }
-    }
+    /// Only the three main boroughs shown by default; Bronx & Staten Island are rare for studios.
+    private let primaryBoroughs = ["Manhattan", "Brooklyn", "Queens"]
 
-    private func toggleBorough(_ borough: String) {
-        guard let subs = MockData.boroughNeighborhoods[borough] else { return }
-        if boroughAllSelected(borough) {
-            subs.forEach { selectedNeighborhoods.remove($0) }
-        } else {
-            subs.forEach { selectedNeighborhoods.insert($0) }
-        }
+    private var allBoroughsSelected: Bool {
+        primaryBoroughs.allSatisfy { selectedBoroughs.contains($0) }
     }
 
     private var neighborhoodSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                sectionHeader("Preferred Neighborhoods")
+                sectionHeader("Boroughs")
                 Spacer()
                 Button {
-                    if allSelected {
-                        selectedNeighborhoods.removeAll()
+                    if allBoroughsSelected {
+                        primaryBoroughs.forEach { selectedBoroughs.remove($0) }
                     } else {
-                        selectedNeighborhoods = Set(MockData.neighborhoods)
+                        primaryBoroughs.forEach { selectedBoroughs.insert($0) }
                     }
                 } label: {
-                    Text(allSelected ? "Deselect All" : "Select All")
+                    Text(allBoroughsSelected ? "Deselect All" : "Select All")
                         .font(.subheadline)
                         .fontWeight(.medium)
                         .foregroundStyle(accent)
                 }
             }
-            Text("Select all that interest you. Leave empty to see all areas.")
+            Text("All boroughs are selected by default. Deselect to narrow results.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
-            ForEach(MockData.neighborhoodsByBorough, id: \.borough) { group in
-                VStack(spacing: 0) {
-                    // Borough header row — tappable to select/deselect all in borough
+            VStack(spacing: 0) {
+                ForEach(MockData.neighborhoodsByBorough.filter { primaryBoroughs.contains($0.borough) }, id: \.borough) { group in
+                    if group.borough != primaryBoroughs.first {
+                        Divider()
+                    }
+
+                    // Borough toggle row
                     Button {
-                        toggleBorough(group.borough)
+                        if selectedBoroughs.contains(group.borough) {
+                            selectedBoroughs.remove(group.borough)
+                        } else {
+                            selectedBoroughs.insert(group.borough)
+                        }
                     } label: {
                         HStack {
+                            Image(systemName: selectedBoroughs.contains(group.borough) ? "checkmark.circle.fill" : "circle")
+                                .font(.system(size: 20))
+                                .foregroundStyle(selectedBoroughs.contains(group.borough) ? accent : accent.opacity(0.3))
+
                             Text(group.borough)
-                                .font(.subheadline)
-                                .fontWeight(.bold)
+                                .font(.body)
+                                .fontWeight(.semibold)
                                 .foregroundStyle(accent)
-                            Spacer()
-                            Text(boroughAllSelected(group.borough) ? "Deselect" : "Select All")
+
+                            Text("(\(group.neighborhoods.count) neighborhoods)")
                                 .font(.caption)
-                                .foregroundStyle(accent.opacity(0.5))
+                                .foregroundStyle(.secondary)
+
+                            Spacer()
+
+                            // Expand/collapse chevron
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    if expandedBoroughs.contains(group.borough) {
+                                        expandedBoroughs.remove(group.borough)
+                                    } else {
+                                        expandedBoroughs.insert(group.borough)
+                                    }
+                                }
+                            } label: {
+                                Image(systemName: expandedBoroughs.contains(group.borough) ? "chevron.up" : "chevron.down")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundStyle(accent.opacity(0.4))
+                                    .frame(width: 30, height: 30)
+                            }
                         }
                         .padding(.horizontal, 16)
-                        .padding(.vertical, 10)
-                        .background(accent.opacity(0.04))
+                        .padding(.vertical, 12)
+                        .background(
+                            selectedBoroughs.contains(group.borough)
+                            ? accent.opacity(0.06)
+                            : Color.white
+                        )
                     }
 
-                    ForEach(group.neighborhoods, id: \.self) { neighborhood in
-                        Divider().padding(.leading, 16)
-
-                        Button {
-                            if selectedNeighborhoods.contains(neighborhood) {
-                                selectedNeighborhoods.remove(neighborhood)
-                            } else {
-                                selectedNeighborhoods.insert(neighborhood)
-                            }
-                        } label: {
-                            HStack {
-                                Text(neighborhood)
-                                    .font(.body)
-                                    .foregroundStyle(accent)
-                                Spacer()
-                                if selectedNeighborhoods.contains(neighborhood) {
-                                    Image(systemName: "checkmark")
-                                        .font(.system(size: 13, weight: .semibold))
-                                        .foregroundStyle(accent)
+                    // Collapsible neighborhood list
+                    if expandedBoroughs.contains(group.borough) {
+                        VStack(spacing: 0) {
+                            ForEach(group.neighborhoods, id: \.self) { neighborhood in
+                                Divider().padding(.leading, 44)
+                                HStack {
+                                    Text(neighborhood)
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
                                 }
+                                .padding(.horizontal, 44)
+                                .padding(.vertical, 8)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(Color.white)
                             }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 11)
-                            .background(
-                                selectedNeighborhoods.contains(neighborhood)
-                                ? accent.opacity(0.06)
-                                : Color.white
-                            )
                         }
+                        .transition(.opacity)
                     }
                 }
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .shadow(color: .black.opacity(0.06), radius: 8, y: 2)
             }
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .shadow(color: .black.opacity(0.06), radius: 8, y: 2)
         }
         .onAppear {
             if let saved = appState.needs {
-                selectedNeighborhoods = Set(saved.neighborhoods)
+                // Restore borough selections from saved neighborhoods
+                selectedBoroughs = Set(saved.neighborhoods)
                 minSqft = saved.minSqft
                 maxSqft = saved.maxSqft
                 maxMonthlyBudget = Double(saved.maxMonthlyBudget)
@@ -385,7 +413,7 @@ struct NeedsFormView: View {
             let needs = StudioNeeds(
                 minSqft: minSqft,
                 maxSqft: maxSqft,
-                neighborhoods: Array(selectedNeighborhoods),
+                neighborhoods: Array(selectedBoroughs),
                 maxMonthlyBudget: Int(maxMonthlyBudget),
                 leaseStart: leaseStart,
                 leaseDurationMonths: leaseDurationMonths,

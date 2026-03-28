@@ -8,18 +8,13 @@ struct MainTabView: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            // Tab 1: Find Space
+            // Tab 1: Find Space — always show all listings, filter down from there
             NavigationStack {
-                if appState.needs == nil {
-                    NeedsFormView()
-                        .environmentObject(appState)
-                } else {
-                    MatchResultsView()
-                        .environmentObject(appState)
-                }
+                MatchResultsView()
+                    .environmentObject(appState)
             }
             .tabItem {
-                Label("Find Space", systemImage: "magnifyingglass")
+                Label("Browse", systemImage: "magnifyingglass")
             }
             .tag(0)
 

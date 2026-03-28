@@ -16,7 +16,7 @@ final class AppState: ObservableObject {
     @Published var apiError: String?
 
     private let needsKey = "savedStudioNeeds"
-    private let apiURL = URL(string: "http://127.0.0.1:8000/listings?limit=2000")!
+    private let apiURL = URL(string: "https://studionow-production.up.railway.app/listings?limit=2000")!
 
     init() {
         loadNeeds()
@@ -48,7 +48,7 @@ final class AppState: ObservableObject {
             isLiveData = true
             apiError = nil
         } catch let error as URLError where error.code == .cannotConnectToHost || error.code == .timedOut {
-            apiError = "Cannot connect to server. Make sure the API is running on localhost:8000."
+            apiError = "Cannot connect to server. Check your network connection and try again."
         } catch {
             apiError = "Failed to load listings: \(error.localizedDescription)"
         }
