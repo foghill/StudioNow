@@ -43,6 +43,7 @@ dist/
 
 # Scraped data (raw only — normalized stays for mockdata generation)
 scraper/data/raw/
+scraper/data/*.db
 
 # macOS
 .DS_Store

@@ -47,7 +47,7 @@ class Config:
     max_retries: int = 3
     request_timeout: int = 60  # seconds
     data_dir: str = field(
-        default_factory=lambda: os.path.join(os.path.dirname(__file__), "data")
+        default_factory=lambda: os.environ.get("DATA_DIR") or os.path.join(os.path.dirname(__file__), "data")
     )
 
     def validate(self) -> None:

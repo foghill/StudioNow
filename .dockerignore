@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Data (will live on Railway volume in production)
+scraper/data/raw/
+scraper/data/normalized/
+scraper/data/*.db
+
+# Xcode / iOS
+build/
+DerivedData/
+*.xcuserstate
+*.xcworkspace
+StudioNow.xcodeproj/
+StudioNow/
+
+# Environment
+.env
+
+# macOS
+.DS_Store
+
+# Git
+.git/
+.gitignore
