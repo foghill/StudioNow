@@ -13,6 +13,7 @@
 		4E243D6616DE719556321AF2 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DF80E8CEC338FC619DD0147 /* OnboardingView.swift */; };
 		7769762535483A3D51ACF6AB /* ListingCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4D0A15AC79725E360E1CBF1 /* ListingCardView.swift */; };
 		862D0B07CC3D9A44EF44421F /* SpaceDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E519C0325311189348A122BD /* SpaceDetailView.swift */; };
+		89C011851DFA9147845ED469 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AB902D7612D13D0DDAF0A238 /* Assets.xcassets */; };
 		933741E9B3C2B1A19115B9A7 /* StudioNowApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AD838A8E90F731367D538AF /* StudioNowApp.swift */; };
 		9A6707B94C137DD82B316B65 /* MatchResultsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C18F3D5E9F1B867B3B2A798 /* MatchResultsView.swift */; };
 		A6155D8252EEC9CFE33C5445 /* MediationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51C35B013C9A6AF1D9A4D26F /* MediationView.swift */; };
@@ -34,6 +35,7 @@
 		75A845ED68546C736C10A357 /* StudioNow.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = StudioNow.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8C0D1271C7F613030C91DD0C /* MockData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockData.swift; sourceTree = "<group>"; };
 		8F2483550018CC4B8E7C211C /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
+		AB902D7612D13D0DDAF0A238 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		E4D0A15AC79725E360E1CBF1 /* ListingCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListingCardView.swift; sourceTree = "<group>"; };
 		E519C0325311189348A122BD /* SpaceDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceDetailView.swift; sourceTree = "<group>"; };
 		EC3849C6C1BB81658BC50DFF /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
@@ -115,6 +117,7 @@
 		82C7819E728CF2749FFAC08D /* StudioNow */ = {
 			isa = PBXGroup;
 			children = (
+				AB902D7612D13D0DDAF0A238 /* Assets.xcassets */,
 				63E2725A1C64909B5DD549EE /* Info.plist */,
 				4AD838A8E90F731367D538AF /* StudioNowApp.swift */,
 				699687C4232D2F82062FF31C /* Data */,
@@ -158,6 +161,7 @@
 			buildConfigurationList = 8140A231B428B9C9550E5075 /* Build configuration list for PBXNativeTarget "StudioNow" */;
 			buildPhases = (
 				6E2132183292CF015ED0C39B /* Sources */,
+				3BADA93B286F2CB368C0737F /* Resources */,
 			);
 			buildRules = (
 			);
@@ -180,7 +184,8 @@
 				LastUpgradeCheck = 1600;
 				TargetAttributes = {
 					393340DBE4A0B185BC6597E3 = {
-						DevelopmentTeam = "";
+						DevelopmentTeam = R45KT4XDXH;
+						ProvisioningStyle = Automatic;
 					};
 				};
 			};
@@ -202,6 +207,17 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		3BADA93B286F2CB368C0737F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				89C011851DFA9147845ED469 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		6E2132183292CF015ED0C39B /* Sources */ = {
@@ -350,15 +366,18 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGNING_ALLOWED = NO;
-				CODE_SIGNING_REQUIRED = NO;
-				CODE_SIGN_IDENTITY = "";
-				DEVELOPMENT_TEAM = "";
+				CODE_SIGNING_ALLOWED = YES;
+				CODE_SIGNING_REQUIRED = YES;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = R45KT4XDXH;
 				INFOPLIST_FILE = StudioNow/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.worthlessstudios.studionow;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 6.0;
@@ -370,15 +389,18 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGNING_ALLOWED = NO;
-				CODE_SIGNING_REQUIRED = NO;
-				CODE_SIGN_IDENTITY = "";
-				DEVELOPMENT_TEAM = "";
+				CODE_SIGNING_ALLOWED = YES;
+				CODE_SIGNING_REQUIRED = YES;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = R45KT4XDXH;
 				INFOPLIST_FILE = StudioNow/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.worthlessstudios.studionow;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 6.0;

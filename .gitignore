@@ -1,62 +1,7 @@
-# Xcode
-build/
-*.pbxuser
-!default.pbxuser
-*.mode1v3
-!default.mode1v3
-*.mode2v3
-!default.mode2v3
-*.perspectivev3
-!default.perspectivev3
-xcuserdata/
-*.xccheckout
-*.moved-aside
-DerivedData/
-*.hmap
-*.ipa
-*.xcuserstate
-*.xcscmblueprint
-
-# Xcode Previews
-PreviewAssets.xcassets/
-
-# Swift Package Manager
-.build/
-.swiftpm/
-
-# CocoaPods
-Pods/
-Podfile.lock
-
-# Python
-__pycache__/
-*.py[cod]
-*.pyo
-.venv/
-venv/
-*.egg-info/
-dist/
-.eggs/
-
-# Environment
-.env
-
-# Scraped data (raw only — normalized stays for mockdata generation)
-scraper/data/raw/
-scraper/data/*.db
-
-# macOS
 .DS_Store
-.AppleDouble
-.LSOverride
-._*
-.Spotlight-V7
-.Trashes
-
-# VSCode / editors
-.vscode/
-*.swp
-*.swo
-
-# Misc
-=3.10
+build/
+DerivedData/
+*.xcuserstate
+*.xcuserdatad
+Pods/
+.swiftpm/

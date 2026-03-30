@@ -2,6 +2,24 @@
 
 An iOS app by [WORTHLESSSTUDIOS](https://worthlessstudios.org) that matches NYC artists with affordable studio spaces.
 
+## Why This Exists
+
+New York City is losing artist studios at an alarming rate. Rising rents, rezoning, and speculative development push working artists out of the neighborhoods they helped build. WORTHLESSSTUDIOS is a not-for-profit that fights this by connecting artists directly with affordable studio spaces across all five boroughs.
+
+Studio Now is the tool that makes this possible. It aggregates listings from public datasets, artist-focused rental platforms, and community organizations into a single searchable feed — so artists spend less time hunting and more time making work.
+
+## What It Does
+
+- **Browse real listings** across Manhattan, Brooklyn, Queens, the Bronx, and Staten Island, pulled from 16 sources including NYC Open Data, Rockella, Chashama, Spacefinder, and more
+- **Filter by what matters** — borough, square footage, monthly budget, lease timing, and co-tenant openness
+- **Map and list views** with price-annotated pins and search, so artists can explore by neighborhood
+- **Request a space** directly from a listing's detail page
+- **Co-tenant matching** with compatibility indicators for artists open to sharing
+- **Mediation and support** — free scheduling for co-tenant mediation, plus a resource hub covering studio setup, tenant rights, and community forums
+- **Dashboard** to track application status, upcoming sessions, and rent schedules
+
+The tone is community-driven, approachable, and artist-friendly — not corporate. Warm neutrals, clean typography, generous whitespace.
+
 ---
 
 ## iOS App
@@ -88,31 +106,46 @@ StudioNow/
 
 ---
 
-## Scraper
+## Data Pipeline
 
-The scraper collects studio listings from multiple sources using the [Firecrawl](https://firecrawl.dev) API for LLM-based structured extraction, then normalizes and deduplicates them into a single `listings.json`.
+Listings come from two kinds of sources: **public APIs** (free, no credits) and **web scrapers** powered by [Firecrawl](https://firecrawl.dev) for LLM-based structured extraction. All listings are normalized, deduplicated, and stored in a SQLite database.
 
 ### Sources
 
+**API-based** (no Firecrawl credits needed):
+
+| Source | Priority | Description |
+|--------|----------|-------------|
+| nyc_opendata | high | NYC Dept. of Cultural Affairs — cultural organizations via Socrata REST API |
+| coworker | high | Coworker.com — creative/artist coworking spaces via public API |
+
+**Firecrawl-based** (uses extraction credits):
+
 | Source | Priority | Notes |
 |--------|----------|-------|
-| rockella | high | |
-| chashama | high | |
-| spacefinder | high | |
-| loopnet | medium | |
-| nyfa | medium | |
+| rockella | high | Artist studios in Brooklyn, Queens, Manhattan |
+| chashama | high | Chashama artist spaces |
+| spacefinder | high | NYC Spacefinder directory |
+| ny_studio_factory | medium | |
+| navy_yard | medium | Brooklyn Navy Yard studios |
+| gmdc | medium | Greenpoint Manufacturing & Design Center |
+| mana_contemporary | medium | |
+| pioneer_works | medium | |
+| industry_city | medium | |
+| loopnet | medium | Commercial listings |
+| nyfa | medium | NY Foundation for the Arts |
 | listings_project | medium | |
 | craigslist | medium | Restricted — opt in with `--include-restricted` |
 | streeteasy | low | Restricted — opt in with `--include-restricted` |
 
 Default runs: high-priority sources only.
 
-### Data pipeline
+### Normalization
+
+All sources feed through the same pipeline:
 
 ```
-Firecrawl extraction
-      ↓
-Raw JSON  →  data/raw/{source}_{timestamp}.json
+Source data (API response or Firecrawl extraction)
       ↓
 normalize_listings()
   · normalize price (string → float USD/mo)
@@ -122,9 +155,9 @@ normalize_listings()
   · deduplicate by MD5(address + size)
   · validate (must have address or title)
       ↓
-data/normalized/listings.json
+SQLite database (production)
       ↓
-generate_mockdata.py  →  StudioNow/Data/MockData.swift
+generate_mockdata.py  →  StudioNow/Data/MockData.swift (offline fallback)
 ```
 
 ### Setup
@@ -183,14 +216,14 @@ Credit budget: 500 per run (warning at 80%). Rate limit delay: 2s between reques
 
 ## API Server
 
-A FastAPI server that serves cached listings from disk and auto-scrapes on a configurable schedule.
+A FastAPI server backed by SQLite with full-text search, spatial queries, and automatic data refresh.
 
-### Caching strategy
+### How it works
 
-- On startup, loads `listings.json` into memory and serves all queries from that cache
-- A background scheduler (APScheduler) runs high-priority scrapers every `SCRAPE_INTERVAL_HOURS` (default: 24)
-- If the cache is fresh on startup, the scheduler waits until the interval elapses before scraping again
-- If the cache is missing or stale on startup, the first scrape is triggered after 1 minute
+- All listings are stored in SQLite with FTS5 full-text search and R-tree spatial indexes
+- A background scheduler (APScheduler) pulls fresh data at 6 AM and 6 PM ET daily
+- API-based sources (NYC Open Data, Coworker) are fetched regardless of Firecrawl credit balance
+- On startup, if the database is empty, it imports from `listings.json` as a fallback
 - The iOS app fetches once per session and falls back to `MockData` when unreachable
 
 ### Start the server
@@ -218,13 +251,15 @@ SCRAPE_INTERVAL_HOURS=0 ./serve.sh
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/health` | Cache status, listing count, cache age, next scheduled scrape |
+| `GET` | `/health` | Database stats, listing counts by borough/source, scheduler status |
 | `GET` | `/listings` | Query listings with filters (see below) |
+| `GET` | `/listings/nearby` | Find studios near a lat/lng coordinate |
 | `GET` | `/listings/{id}` | Single listing by ID |
-| `GET` | `/sources` | All available scraper sources |
-| `POST` | `/scrape` | Trigger a background scrape (202 Accepted) |
-| `GET` | `/scrape/status` | Poll scraping progress |
-| `POST` | `/cache/reload` | Reload in-memory cache from listings.json without re-scraping |
+| `GET` | `/sources` | All available data sources |
+| `GET` | `/stats` | Detailed database statistics |
+| `POST` | `/scrape` | Trigger a background data refresh (202 Accepted) |
+| `GET` | `/scrape/status` | Poll progress with per-source detail and errors |
+| `POST` | `/seed` | Import listings from a JSON payload |
 
 ### `GET /listings` query parameters
 
@@ -260,18 +295,22 @@ curl "http://localhost:8000/listings?max_sqft=300&shared_ok=true"
 ```json
 {
   "status": "ok",
-  "listings_cached": 33,
-  "cached_at": "2026-03-25T03:00:00+00:00",
-  "cache_age_hours": 2.5,
+  "total_listings": 864,
+  "active_listings": 864,
+  "stale_listings": 0,
+  "with_coordinates": 671,
+  "by_source": { "nyc_opendata": 831, "rockella": 33 },
+  "by_borough": { "manhattan": 452, "brooklyn": 206, "queens": 102, "bronx": 53, "staten_island": 18 },
   "scrape_running": false,
-  "scrape_interval_hours": 24,
-  "next_scheduled_scrape": "2026-03-26T03:00:00+00:00"
+  "schedule": "cron (6am/6pm ET)",
+  "next_scheduled_scrapes": [
+    { "id": "scrape_6am", "next_run": "2026-03-28T06:00:00-04:00" },
+    { "id": "scrape_6pm", "next_run": "2026-03-28T18:00:00-04:00" }
+  ]
 }
 ```
 
-`next_scheduled_scrape` is `null` when `SCRAPE_INTERVAL_HOURS=0`.
-
-### Trigger a manual scrape via API
+### Trigger a manual data refresh
 
 ```bash
 # High-priority sources (default)
@@ -280,16 +319,18 @@ curl -X POST http://localhost:8000/scrape
 # Single source
 curl -X POST http://localhost:8000/scrape \
   -H "Content-Type: application/json" \
-  -d '{"source": "rockella"}'
+  -d '{"source": "nyc_opendata"}'
 
 # Medium-priority sources
 curl -X POST http://localhost:8000/scrape \
   -H "Content-Type: application/json" \
   -d '{"priority": "medium"}'
 
-# Poll status
+# Poll status (includes per-source details and errors)
 curl http://localhost:8000/scrape/status
 
-# Reload cache after a manual scraper run
-curl -X POST http://localhost:8000/cache/reload
+# Seed database from a local listings.json
+curl -X POST http://localhost:8000/seed \
+  -H "Content-Type: application/json" \
+  -d @scraper/data/normalized/listings.json
 ```

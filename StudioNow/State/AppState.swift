@@ -15,10 +15,12 @@ final class AppState: ObservableObject {
     @Published var isLiveData = false
     @Published var apiError: String?
 
+    private let profileKey = "savedArtistProfile"
     private let needsKey = "savedStudioNeeds"
     private let apiURL = URL(string: "https://studionow-production.up.railway.app/listings?limit=2000")!
 
     init() {
+        loadProfile()
         loadNeeds()
     }
 
@@ -65,6 +67,15 @@ final class AppState: ObservableObject {
 
     func saveProfile(_ profile: ArtistProfile) {
         self.profile = profile
+        if let data = try? JSONEncoder().encode(profile) {
+            UserDefaults.standard.set(data, forKey: profileKey)
+        }
+    }
+
+    private func loadProfile() {
+        guard let data = UserDefaults.standard.data(forKey: profileKey),
+              let saved = try? JSONDecoder().decode(ArtistProfile.self, from: data) else { return }
+        self.profile = saved
     }
 
     func saveNeeds(_ needs: StudioNeeds) {
