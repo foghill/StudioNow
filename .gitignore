@@ -1,7 +1,42 @@
+# macOS
 .DS_Store
+.AppleDouble
+.LSOverride
+
+# Xcode
 build/
 DerivedData/
 *.xcuserstate
 *.xcuserdatad
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
 Pods/
 .swiftpm/
+
+# Archives & exports
+*.xcarchive/
+StudioNow-Export/
+ExportOptions.plist
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+*.egg
+
+# Environment
+.env
+
+# Scraper data (regenerated)
+scraper/data/raw/
+scraper/data/normalized/
+*.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo

@@ -17,6 +17,14 @@ targets:
           UIColorName: ""
         NSLocationWhenInUseUsageDescription: "Used to show nearby studio spaces."
         UIUserInterfaceStyle: Light
+        CFBundleIconName: AppIcon
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
     settings:
       SWIFT_VERSION: "6.0"
       PRODUCT_BUNDLE_IDENTIFIER: com.worthlessstudios.studionow

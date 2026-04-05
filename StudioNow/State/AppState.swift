@@ -46,8 +46,14 @@ final class AppState: ObservableObject {
             let decoded = try JSONDecoder().decode(APIListingsResponse.self, from: data)
             let mapped = decoded.listings.map { $0.toStudioListing() }
 
-            listings = mapped
-            isLiveData = true
+            if mapped.isEmpty {
+                // API returned no results — use sample data so the UI is populated
+                listings = MockData.sampleListings
+                isLiveData = false
+            } else {
+                listings = mapped
+                isLiveData = true
+            }
             apiError = nil
         } catch let error as URLError where error.code == .cannotConnectToHost || error.code == .timedOut {
             apiError = "Cannot connect to server. Check your network connection and try again."
